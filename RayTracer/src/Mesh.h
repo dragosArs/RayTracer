@@ -30,7 +30,9 @@ struct Material
 	float Metallic = 0.0f;
 	glm::vec3 EmissionColor{ 0.0f };
 	float EmissionPower = 0.0f;
-
+	glm::vec3 GetDiffuse() const { return Albedo * (1.0f - Metallic); }
+	//glm::vec3 GetSpecular() const { return glm::mix(glm::vec3(0.04f), Albedo, Metallic); }
+	glm::vec3 GetSpecular() const { return glm::mix(glm::vec3(0.04f), Albedo, Metallic) * glm::mix(0.08f, 1.0f, Roughness); }
 	glm::vec3 GetEmission() const { return EmissionColor * EmissionPower; }
 	// Optional texture that replaces kd; use as follows:
 	// 

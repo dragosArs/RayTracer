@@ -39,9 +39,11 @@ struct ParallelogramLight {
     glm::vec3 color0, color1, color2, color3;
 };
 
+//Use a vector of materials, not only to reuse materials but also pass indices insetad of full materials
 struct Scene {
     std::vector<std::variant<Mesh, Sphere, AxisAlignedBox>> objects;
-    std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lights;
+    //std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lightSources;
+    std::vector<PointLight> lightSources;
 };
 
 // Load a prebuilt scene.

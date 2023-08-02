@@ -19,31 +19,32 @@ public:
 	{
 		Material pinkSphere;
 		pinkSphere.Albedo = { 1.0f, 0.0f, 1.0f };
-		pinkSphere.Roughness = 0.0f;
+		pinkSphere.Roughness = 0.3f;
+		pinkSphere.Metallic = 0.2f;
 
 		Material blueSphere;
-		blueSphere.Albedo = { 0.2f, 0.3f, 1.0f };
-		blueSphere.Roughness = 0.1f;
+		blueSphere.Albedo = { 0.2f, 0.0f, 1.0f };
+		blueSphere.Roughness = 0.001f;
+		blueSphere.Metallic = 0.3f;
 
-		Material orangeSphere;
-		orangeSphere.Albedo = { 0.8f, 0.5f, 0.2f };
-		orangeSphere.Roughness = 0.1f;
-		orangeSphere.EmissionColor = orangeSphere.Albedo;
-		orangeSphere.EmissionPower = 2.0f;
+		Material greenSphere;
+		greenSphere.Albedo = { 0.2f, 1.0f, 0.0f };
+		greenSphere.Roughness = 0.5f;
+		greenSphere.Metallic = 0.1f;
 
 		{
 			Sphere sphere;
-			sphere.center = { 0.0f, 0.0f, 0.0f };
+			sphere.center = { 0.0f, 1.0f, 0.0f };
 			sphere.radius = 1.0f;
-			sphere.material = orangeSphere;
+			sphere.material = blueSphere;
 			m_Scene.objects.push_back(sphere);
 		}
 
 		{
 			Sphere sphere;
-			sphere.center = { 2.0f, 0.0f, 0.0f };
+			sphere.center = { 5.0f, 1.0f, -3.0f };
 			sphere.radius = 1.0f;
-			sphere.material = blueSphere;
+			sphere.material = greenSphere;
 			m_Scene.objects.push_back(sphere);
 		}
 
@@ -54,12 +55,18 @@ public:
 			sphere.material = pinkSphere;
 			m_Scene.objects.push_back(sphere);
 		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { 0.0f, 3.0f, 0.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
 	}
 
 	virtual void OnUpdate(float ts) override
 	{
-		if (m_Camera.OnUpdate(ts))
-			m_Renderer.ResetFrameIndex();
+		m_Camera.OnUpdate(ts);
 	}
 
 	virtual void OnUIRender() override
@@ -116,15 +123,16 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	Walnut::Application* app = new Walnut::Application(spec);
 	app->PushLayer<ExampleLayer>();
 	app->SetMenubarCallback([app]()
-	{
-		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("Exit"))
+			if (ImGui::BeginMenu("File"))
 			{
-				app->Close();
+				if (ImGui::MenuItem("Exit"))
+				{
+					app->Close();
+				}
+				ImGui::EndMenu();
 			}
-			ImGui::EndMenu();
-		}
-	});
+		});
 	return app;
 }
+

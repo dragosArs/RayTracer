@@ -26,14 +26,15 @@ struct Material {
 struct Material
 {
 	glm::vec3 Albedo{ 1.0f };
+	glm::vec3 EmissionColor{ 0.0f };
 	float Roughness = 1.0f;
 	float Metallic = 0.0f;
-	glm::vec3 EmissionColor{ 0.0f };
 	float EmissionPower = 0.0f;
+	float GetShininess() const { return (1.0f - Roughness) * (1.0f - Roughness); }
 	glm::vec3 GetDiffuse() const { return Albedo * (1.0f - Metallic); }
-	//glm::vec3 GetSpecular() const { return glm::mix(glm::vec3(0.04f), Albedo, Metallic); }
-	glm::vec3 GetSpecular() const { return glm::mix(glm::vec3(0.04f), Albedo, Metallic) * glm::mix(0.08f, 1.0f, Roughness); }
+	glm::vec3 GetSpecular() const { return Metallic * (1.0f - Roughness) * Albedo; }
 	glm::vec3 GetEmission() const { return EmissionColor * EmissionPower; }
+	//glm::vec3 GetSpecular() const { return glm::mix(glm::vec3(0.04f), Albedo, Metallic) * glm::mix(0.08f, 1.0f, Roughness); }
 	// Optional texture that replaces kd; use as follows:
 	// 
 	// if (material.kdTexture) {

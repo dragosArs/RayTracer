@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include "Ray.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -13,12 +14,16 @@ Camera::Camera(float verticalFOV, float nearClip, float farClip)
 {
 	m_ForwardDirection = glm::vec3(0, 0, -1);
 	m_Position = glm::vec3(0, 0, 3);
+	xDebug = 0;
+	yDebug = 0;
 }
 
 void Camera::OnUpdate(float ts)
 {
 	glm::vec2 mousePos = Input::GetMousePosition();
 	glm::vec2 delta = (mousePos - m_LastMousePosition) * 0.002f;
+	//debug specific points
+
 	m_LastMousePosition = mousePos;
 
 	if (!Input::IsMouseButtonDown(MouseButton::Right))
@@ -66,6 +71,14 @@ void Camera::OnUpdate(float ts)
 	{
 		m_Position += upDirection * speed * ts;
 		moved = true;
+	}
+
+	//used for debugging specific pixel that mouse points at
+	if (Input::IsKeyDown(KeyCode::R))
+	{
+		//get the position of the mouse in world space
+		xDebug = (uint32_t) Input::GetMousePosition().x;
+		yDebug = (uint32_t) Input::GetMousePosition().y;
 	}
 
 	// Rotation

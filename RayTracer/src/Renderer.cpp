@@ -14,7 +14,7 @@ namespace Utils {
 		uint8_t r = (uint8_t)(color.r * 255.0f);
 		uint8_t g = (uint8_t)(color.g * 255.0f);
 		uint8_t b = (uint8_t)(color.b * 255.0f);
-		uint8_t a = 255.0f;
+		uint8_t a = 255;
 
 		uint32_t result = (a << 24) | (b << 16) | (g << 8) | r;
 		return result;
@@ -61,7 +61,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 			std::for_each(std::execution::par, m_imageHorizontalIter.begin(), m_imageHorizontalIter.end(),
 			[this, y](uint32_t x)
 				{
-					m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(x, y));
+					m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(x, y, false));
 				});
 		});
 
@@ -71,7 +71,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	{
 		for (uint32_t x = 0; x < m_finalImage->GetWidth(); x++)
 		{
-			m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(x, y));
+			m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(x, y, false));
 			//m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(glm::vec3{0.1f, 0.2f, 0.9f});
 		}
 	}
@@ -80,8 +80,16 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	m_finalImage->SetData(m_imageData);
 }
 
+void Renderer::Debug(const Scene& scene, const Camera& camera)
+{
+	m_activeScene = &scene;
+	m_activeCamera = &camera;
+	glm::vec3 finalColor = perPixel(camera.xDebug, camera.yDebug, true);
+	std::cout << "finalColor: " << finalColor.x << " " << finalColor.y << " " << finalColor.z << std::endl << std::endl;
+}
 
-glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y)
+
+glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 {
 
 	Ray ray;
@@ -91,11 +99,14 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y)
 	//std::cout<<glm::length(ray.direction)<<std::endl;
 
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
+	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	HitInfo hitInfo;
 	int bounces = 3;
 	for (int i = 0; i < bounces; i++) {
 		//"reset" ray
 		ray.t = -1;
+		if (i >= 1)
+			reflectiveContribution = hitInfo.material.GetSpecular() * reflectiveContribution;
 		traceRay(ray, hitInfo);
 
 		if (ray.t > 0) {
@@ -107,17 +118,21 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y)
 			for (const PointLight& pointLight : m_activeScene->lightSources) {
 				shadowRay.direction = glm::normalize(pointLight.position - hitInfo.position);
 				shadowRay.origin = hitInfo.position + 0.0001f * shadowRay.direction;
+				//reflective component should contribute proportionally to the specular component of the material it reflects off of
 				if (!isInShadow(shadowRay))
-					color += phongFull(hitInfo, m_activeCamera->GetPosition(), pointLight);
+					color += reflectiveContribution * phongFull(hitInfo, *m_activeCamera, pointLight);
 			}
 		}
 		else
 			break;
 		
 	}
-
-
-	return glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
+	if (debug) {
+		std::cout<<"hitInfo position: "<<hitInfo.position.x<<" "<<hitInfo.position.y<<" "<<hitInfo.position.z<<std::endl;
+		std::cout << "camera position: " << m_activeCamera->GetPosition().x << " " << m_activeCamera->GetPosition().y << " " << m_activeCamera->GetPosition().z << std::endl;
+	}
+	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
+	return finalColor;
 }
 
 //This function doesn't return anything, but changes ray.t and hitInfo

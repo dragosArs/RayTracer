@@ -15,11 +15,12 @@ public:
 	const glm::mat4& GetInverseProjection() const { return m_InverseProjection; }
 	const glm::mat4& GetView() const { return m_View; }
 	const glm::mat4& GetInverseView() const { return m_InverseView; }
-
 	const glm::vec3& GetPosition() const { return m_Position; }
 	const glm::vec3& GetDirection() const { return m_ForwardDirection; }
-
 	const std::vector<glm::vec3>& GetRayDirections() const { return m_RayDirections; }
+
+	uint32_t xDebug = 0;
+	uint32_t yDebug = 0;
 
 	float GetRotationSpeed();
 private:
@@ -41,7 +42,6 @@ private:
 
 	// Cached ray directions
 	std::vector<glm::vec3> m_RayDirections;
-
 	glm::vec2 m_LastMousePosition{ 0.0f, 0.0f };
 
 	uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;

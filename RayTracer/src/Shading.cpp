@@ -1,30 +1,48 @@
 #include "Shading.h"
+#include <iostream>
 
-glm::vec3 phongFull(const HitInfo& hitInfo, const glm::vec3& cameraPos, const PointLight& pointLight)
+glm::vec3 phongFull(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
-    return diffuseOnly(hitInfo, pointLight);// +phongSpecularOnly(hitInfo, cameraPos, pointLight);
+    return diffuseOnly(hitInfo, pointLight) + blinnPhongSpecularOnly(hitInfo, camera, pointLight);
 }
 
 glm::vec3 diffuseOnly(const HitInfo& hitInfo, const PointLight& pointLight)
 {
-    glm::vec3 l = pointLight.position - hitInfo.position;
-    float value = glm::dot(glm::normalize(l), hitInfo.normal);
+    glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
+    float value = glm::dot(lightDir, hitInfo.normal);
     if (value < 0)
         return glm::vec3(0.0f, 0.0f, 0.0f);
     return hitInfo.material.GetDiffuse() * value * pointLight.color;
 }
 
-glm::vec3 phongSpecularOnly(const HitInfo& hitInfo, const glm::vec3& cameraPos, const PointLight& pointLight)
+glm::vec3 phongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
-    glm::vec3 l = glm::normalize(pointLight.position - hitInfo.position);
-    glm::vec3 c = glm::normalize(cameraPos - hitInfo.position);
-    glm::vec3 r = glm::normalize(-l + (2 * (glm::dot(l, hitInfo.normal)) * hitInfo.normal));
+    glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
+    glm::vec3 cameraDir = glm::normalize(camera.GetPosition() - hitInfo.position);
+    glm::vec3 reflectionDir = glm::reflect(-lightDir, hitInfo.normal);
 
-    float value = glm::dot(c, r);
+    float value = glm::dot(cameraDir, reflectionDir);
+    if (value < 0)
+        return glm::vec3(0.0f, 0.0f, 0.0f);
+    
+    float shininess = hitInfo.material.GetShininess();
+    //float shininess = 1.0f;
+    //because value is between 0 and 1, bigger shininess means smaller specular
+    //TODO find a way to make it more realistic, tweak variables 
+    return pow(value, 50.0f) * hitInfo.material.GetSpecular() *  pointLight.color;
+}
+
+glm::vec3 blinnPhongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
+{
+    glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
+    glm::vec3 cameraDir = glm::normalize(camera.GetPosition() - hitInfo.position);
+    glm::vec3 reflectionDir = glm::normalize(lightDir + cameraDir);
+
+    float value = glm::dot(cameraDir, lightDir);
     if (value < 0) {
-        value = 0;
+        return glm::vec3(0.0f, 0.0f, 0.0f);
     }
-    float shininess = (1 - hitInfo.material.Roughness) * (1 - hitInfo.material.Roughness);
-    return hitInfo.material.GetSpecular() * pow(value, shininess) * pointLight.color;
-    //return glm::vec3(0, 1, 0);
+    float shininess = hitInfo.material.GetShininess();
+    //TODO find a way to make it more realistic, tweak variables 
+    return pow(value, 100.0f) * hitInfo.material.GetSpecular() * pointLight.color;
 }

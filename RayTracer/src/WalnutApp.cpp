@@ -19,13 +19,18 @@ public:
 	{
 		Material pinkSphere;
 		pinkSphere.Albedo = { 1.0f, 0.0f, 1.0f };
-		pinkSphere.Roughness = 0.3f;
-		pinkSphere.Metallic = 0.2f;
+		pinkSphere.Roughness = 0.8f;
+		pinkSphere.Metallic = 0.1f;
 
 		Material blueSphere;
 		blueSphere.Albedo = { 0.2f, 0.0f, 1.0f };
 		blueSphere.Roughness = 0.001f;
-		blueSphere.Metallic = 0.3f;
+		blueSphere.Metallic = 0.1f;
+
+		Material reflectiveSphere;
+		reflectiveSphere.Albedo = { 0.9f, 0.9f, 0.9f };
+		reflectiveSphere.Roughness = 0.1f;
+		reflectiveSphere.Metallic = 0.9f;
 
 		Material greenSphere;
 		greenSphere.Albedo = { 0.2f, 1.0f, 0.0f };
@@ -45,6 +50,14 @@ public:
 			sphere.center = { 5.0f, 1.0f, -3.0f };
 			sphere.radius = 1.0f;
 			sphere.material = greenSphere;
+			m_Scene.objects.push_back(sphere);
+		}
+
+		{
+			Sphere sphere;
+			sphere.center = { 3.0f, 1.0f, 3.0f };
+			sphere.radius = 1.0f;
+			sphere.material = reflectiveSphere;
 			m_Scene.objects.push_back(sphere);
 		}
 
@@ -77,6 +90,10 @@ public:
 		{
 			Render();
 		}
+		if (ImGui::Button("Debug"))
+		{
+			Debug();
+		}
 		ImGui::End();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -105,6 +122,13 @@ public:
 		m_Renderer.Render(m_Scene, m_Camera);
 
 		m_LastRenderTime = timer.ElapsedMillis();
+	}
+
+	void Debug()
+	{
+		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
+		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
+		m_Renderer.Debug(m_Scene, m_Camera);
 	}
 private:
 	Renderer m_Renderer;

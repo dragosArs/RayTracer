@@ -21,12 +21,13 @@ public:
 
 	void OnResize(uint32_t width, uint32_t height);
 	void Render(const Scene& scene, const Camera& camera);
+	void Debug(const Scene& scene, const Camera& camera);
 
 	std::shared_ptr<Walnut::Image> GetFinalImage() const { return m_finalImage; }
 	Settings& GetSettings() { return m_settings; }
 private:
 
-	glm::vec3 perPixel(uint32_t x, uint32_t y); // RayGen
+	glm::vec3 perPixel(uint32_t x, uint32_t y, bool debug); // RayGen
 	void traceRay(Ray& ray, HitInfo& hitInfo);
 	bool isInShadow(const Ray& ray);
 	bool intersectRayWithPlane(const Plane& plane, Ray& ray);

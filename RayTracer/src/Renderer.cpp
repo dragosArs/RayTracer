@@ -53,8 +53,18 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	m_activeScene = &scene;
 	m_activeCamera = &camera;
 
-#define MT 1
-#if MT
+#if DEBUG
+	for (uint32_t y = 0; y < m_finalImage->GetHeight(); y++)
+	{
+		for (uint32_t x = 0; x < m_finalImage->GetWidth(); x++)
+		{
+			m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(x, y, false));
+			//m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(glm::vec3{0.1f, 0.2f, 0.9f});
+		}
+	}
+	
+
+#else
 	std::for_each(std::execution::par, m_imageVerticalIter.begin(), m_imageVerticalIter.end(),
 		[this](uint32_t y)
 		{
@@ -65,16 +75,6 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 				});
 		});
 
-#else
-
-	for (uint32_t y = 0; y < m_finalImage->GetHeight(); y++)
-	{
-		for (uint32_t x = 0; x < m_finalImage->GetWidth(); x++)
-		{
-			m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(x, y, false));
-			//m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(glm::vec3{0.1f, 0.2f, 0.9f});
-		}
-	}
 #endif
 
 	m_finalImage->SetData(m_imageData);
@@ -108,13 +108,14 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 		if (i >= 1)
 			reflectiveContribution = hitInfo.material.GetSpecular() * reflectiveContribution;
 		traceRay(ray, hitInfo);
-
+		
 		if (ray.t > 0) {
+
 			ray.direction = glm::reflect(ray.direction, hitInfo.normal);
 			//very important to avoid self-intersection by using an offset
 			ray.origin = hitInfo.position + 0.0001f * ray.direction;
-			
-			
+
+
 			for (const PointLight& pointLight : m_activeScene->lightSources) {
 				shadowRay.direction = glm::normalize(pointLight.position - hitInfo.position);
 				shadowRay.origin = hitInfo.position + 0.0001f * shadowRay.direction;
@@ -124,7 +125,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			}
 		}
 		else
-			break;
+			i = bounces;
 		
 	}
 	if (debug) {
@@ -138,29 +139,32 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 //This function doesn't return anything, but changes ray.t and hitInfo
 void Renderer::traceRay(Ray& ray, HitInfo& hitInfo)
 {
-	for (const auto& object : m_activeScene->objects)
+	for (const Sphere& sphere: m_activeScene->spheres)
 	{
-		if (std::holds_alternative<Sphere>(object)) {
-			const Sphere sphere = std::get<Sphere>(object);
-			intersectSphere(ray, sphere, hitInfo);
-		}
-		//TODO: add other objects
+		intersectSphere(ray, sphere, hitInfo);
 	}
-	
+
+	for (const Mesh& mesh : m_activeScene->meshes)
+	{
+		for (const glm::uvec3& triangle : mesh.triangles) {
+			Vertex v0 = mesh.vertices[triangle.x];
+			Vertex v1 = mesh.vertices[triangle.y];
+			Vertex v2 = mesh.vertices[triangle.z];
+			intersectTriangle(ray, v0, v1, v2, hitInfo);
+			hitInfo.material = mesh.material;
+		}
+	}	
 
 }
 
 
 bool Renderer::isInShadow(const Ray& ray) {
 
-	for (const auto& object : m_activeScene->objects)
+	for (const Sphere& sphere : m_activeScene->spheres)
 	{
-		if (std::holds_alternative<Sphere>(object)) {
-			const Sphere sphere = std::get<Sphere>(object);
-			if (intersectSphere(ray, sphere))
-				return true;
+		if (intersectSphere(ray, sphere)) {
+			return true;
 		}
-		//TODO: add other objects
 	}
 
 	return false;

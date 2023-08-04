@@ -40,7 +40,9 @@ struct ParallelogramLight {
 
 //Use a vector of materials, not only to reuse materials but also pass indices insetad of full materials
 struct Scene {
-    std::vector<std::variant<Mesh, Sphere, AxisAlignedBox>> objects;
+    std::vector<Mesh> meshes;
+    std::vector<Sphere> spheres;
+
     //std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lightSources;
     std::vector<PointLight> lightSources;
 };

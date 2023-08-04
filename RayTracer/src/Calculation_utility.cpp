@@ -56,41 +56,47 @@ bool intersectSphere(const Ray& ray, const Sphere& sphere) {
         P2 = C / q;
     }
 
-    return P1 >= 0.0F || P2 >= 0.0F;
+    return P1 >= 0.0f || P2 >= 0.0f;
 }
 
-void triangleNormal(const glm::vec3& posV0, const glm::vec3& posV1, const glm::vec3& posV2, glm::vec3& normal) {
-	glm::vec3 e1 = posV1 - posV0;
-	glm::vec3 e2 = posV2 - posV0;
-	normal = glm::normalize(glm::cross(e1, e2));
-}
 
-void intersectsTriangle(Ray& ray, const Vertex& v0, const Vertex& v1, const Vertex& v2, HitInfo& hitInfo) {
-	glm::vec3 posV0 = v0.position;
-	glm::vec3 posV1 = v1.position;
-	glm::vec3 posV2 = v2.position;
-	glm::vec3 normal;
-	triangleNormal(posV0, posV1, posV2, normal);
-	float t = glm::dot(posV0 - ray.origin, normal) / glm::dot(ray.direction, normal);
-	if (t < 0.0f) return;
-	glm::vec3 p = ray.origin + t * ray.direction;
-	glm::vec3 c;
-	glm::vec3 edge0 = posV1 - posV0;
-	glm::vec3 vp0 = p - posV0;
-	c = glm::cross(edge0, vp0);
-	if (glm::dot(normal, c) < 0.0f) return;
-	glm::vec3 edge1 = posV2 - posV1;
-	glm::vec3 vp1 = p - posV1;
-	c = glm::cross(edge1, vp1);
-	if (glm::dot(normal, c) < 0.0f) return;
-	glm::vec3 edge2 = posV0 - posV2;
-	glm::vec3 vp2 = p - posV2;
-	c = glm::cross(edge2, vp2);
-	if (glm::dot(normal, c) < 0.0f) return;
-    if (ray.t == -1.0f || ray.t > t) {
-		ray.t = t;
-		hitInfo.position = p;
-		hitInfo.normal = normal;
-		//hitInfo.material = triangle.material;
-	}
+void intersectTriangle(Ray& ray, const Vertex& v0, const Vertex& v1, const Vertex& v2, HitInfo& hitInfo) {
+    const float EPSILON = 0.0000001f;
+    glm::vec3 vertex0 = v0.position;
+    glm::vec3 vertex1 = v1.position;
+    glm::vec3 vertex2 = v2.position;
+    glm::vec3 edge1, edge2, h, s, q;
+    float a, f, u, v;
+    edge1 = vertex1 - vertex0;
+    edge2 = vertex2 - vertex0;
+    h = glm::cross(ray.direction, edge2);
+    a = glm::dot(edge1, h);
+
+    if (a > -EPSILON && a < EPSILON)
+        return;    // This ray is parallel to this triangle.
+
+    f = 1.0f / a;
+    s = ray.origin - vertex0;
+    u = f * glm::dot(s, h);
+
+    if (u < 0.0f || u > 1.0f)
+       return;
+
+    q = glm::cross(s, edge1);
+    v = f * glm::dot(ray.direction, q);
+
+    if (v < 0.0f || u + v > 1.0f)
+        return;
+
+    // At this stage we can compute t to find out where the intersection point is on the line.
+    float t = f * glm::dot(edge2, q);
+
+    // ray intersection
+    if(t > EPSILON && (ray.t == -1.0f || ray.t > t)) {
+        //spent too much updating this... I wasn't updating ray.t:(((((((
+        ray.t = t;
+        hitInfo.normal = u * v0.normal + v * v1.normal + (1.0f - u - v) * v2.normal;
+        hitInfo.position = ray.origin + t * ray.direction;
+        Material greenSphere;
+    }
 }

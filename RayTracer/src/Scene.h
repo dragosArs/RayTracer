@@ -48,4 +48,4 @@ struct Scene {
 };
 
 // Load a prebuilt scene.
-//Scene loadScene(SceneType type, const std::filesystem::path& dataDir);
+Scene loadScene(const std::filesystem::path& dataDir);

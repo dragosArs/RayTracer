@@ -12,7 +12,7 @@ glm::vec3 diffuseOnly(const HitInfo& hitInfo, const PointLight& pointLight)
     float value = glm::dot(lightDir, hitInfo.normal);
     if (value < 0)
         return glm::vec3(0.0f, 0.0f, 0.0f);
-    return hitInfo.material.GetDiffuse() * value * pointLight.color;
+    return hitInfo.material.kd * value * pointLight.color;
 }
 
 glm::vec3 phongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
@@ -25,11 +25,11 @@ glm::vec3 phongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const 
     if (value < 0)
         return glm::vec3(0.0f, 0.0f, 0.0f);
     
-    float shininess = hitInfo.material.GetShininess();
+    float shininess = hitInfo.material.shininess;
     //float shininess = 1.0f;
     //because value is between 0 and 1, bigger shininess means smaller specular
     //TODO find a way to make it more realistic, tweak variables 
-    return pow(value, 50.0f) * hitInfo.material.GetSpecular() *  pointLight.color;
+    return pow(value, 50.0f) * hitInfo.material.ks *  pointLight.color;
 }
 
 glm::vec3 blinnPhongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
@@ -42,7 +42,7 @@ glm::vec3 blinnPhongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, c
     if (value < 0) {
         return glm::vec3(0.0f, 0.0f, 0.0f);
     }
-    float shininess = hitInfo.material.GetShininess();
+    float shininess = hitInfo.material.shininess;
     //TODO find a way to make it more realistic, tweak variables 
-    return pow(value, 100.0f) * hitInfo.material.GetSpecular() * pointLight.color;
+    return pow(value, 100.0f) * hitInfo.material.ks * pointLight.color;
 }

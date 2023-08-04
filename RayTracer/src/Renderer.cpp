@@ -106,7 +106,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 		//"reset" ray
 		ray.t = -1;
 		if (i >= 1)
-			reflectiveContribution = hitInfo.material.GetSpecular() * reflectiveContribution;
+			reflectiveContribution = hitInfo.material.ks * reflectiveContribution;
 		traceRay(ray, hitInfo);
 		
 		if (ray.t > 0) {

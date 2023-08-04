@@ -93,7 +93,7 @@ void intersectTriangle(Ray& ray, const Vertex& v0, const Vertex& v1, const Verte
 
     // ray intersection
     if(t > EPSILON && (ray.t == -1.0f || ray.t > t)) {
-        //spent too much updating this... I wasn't updating ray.t:(((((((
+        //spent too much debugging this... I wasn't updating ray.t:(((((((
         ray.t = t;
         hitInfo.normal = u * v0.normal + v * v1.normal + (1.0f - u - v) * v2.normal;
         hitInfo.position = ray.origin + t * ray.direction;

@@ -17,51 +17,7 @@ public:
 	ExampleLayer()
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
-
-		Material greenSphere;
-		greenSphere.Albedo = { 0.0f, 1.0f, 0.0f };
-		greenSphere.Roughness = 1.0f;
-		greenSphere.Metallic = 0.0f;
-		{
-			Mesh mesh;
-			mesh.material = greenSphere;
-			Vertex v1;
-			v1.position = { 0.0f, -3.0f, 0.0f };
-			v1.normal = { 0.0f, 0.0f, -1.0f };
-			Vertex v2;
-			v2.position = { 3.0f, -3.0f, 0.0f };
-			v2.normal = { 0.57735026919f, 0.57735026919f,0.57735026919f };
-			Vertex v3;
-			v3.position = { 3.0f, 3.0f, 0.0f };
-			v3.normal = { 0.0f, 0.0f, -1.0f };
-			
-			Vertex v4;
-			v4.position = { 0.0f, 3.0f, 0.0f };
-			//v4.normal = { 0.0f, 0.0f, -1.0f };
-			v4.normal = { 0.0f, 0.0f, 1.0f };
-			/*
-			Vertex v5;
-			v5.position = { 100.0f, 100.0f, 4.0f };
-			v5.normal = { 0.0f, 0.0f, 1.0f };
-			Vertex v6;
-			v6.position = { 2.0f, 100.0f, 500.0f };
-			v6.normal = { 0.0f, 1.0f, 0.0f };
-			Vertex v7;
-			v7.position = { 300.0f, 100.0f, 0.0f };
-			v7.normal = { 1.0f, 0.0f, 0.0f };
-
-			mesh.vertices = { v1, v2, v3, v4, v5, v6, v7 };
-			mesh.triangles = { {0, 1, 2}, {0, 2, 3}, {1, 4, 6 }, {4, 5, 6}, {6, 2, 4 }, { 1, 2, 4 }, { 3, 4, 5 }};
-			*/
-
-			mesh.vertices = { v1, v2, v3, v4};
-			mesh.triangles = { {0, 1, 2}, {0, 2, 3} };
-			
-			m_Scene.meshes.push_back(mesh);
-		}
 		
-
-
 		{
 			PointLight pointLight;
 			pointLight.position = { 0.0f, 3.0f, 0.0f };

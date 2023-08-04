@@ -1,12 +1,12 @@
 #pragma once
 //#include "image.h"
 // Suppress warnings in third-party code.
-#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 #include <filesystem>
-#include <optional>
-#include <span>
-#include <vector>
+#include "Mesh.h"
+#include "rapidobj.hpp"
+
 
 struct Vertex {
 	glm::vec3 position;
@@ -14,15 +14,16 @@ struct Vertex {
 	glm::vec2 texCoord; // Texture coordinate
 };
 
-/*
+
 struct Material {
 	glm::vec3 kd; // Diffuse color.
 	glm::vec3 ks{ 0.0f };
 	float shininess{ 1.0f };
 	float transparency{ 1.0f };
 };
-*/
 
+
+/*
 struct Material
 {
 	glm::vec3 Albedo{ 1.0f };
@@ -42,6 +43,7 @@ struct Material
 	// }
 	//std::optional<Image> kdTexture;
 };
+*/
 
 struct Mesh {
 	// Vertices contain the vertex positions and normals of the mesh.
@@ -51,4 +53,4 @@ struct Mesh {
 	Material material;
 };
 
-[[nodiscard]] std::vector<Mesh> loadMesh(const std::filesystem::path& file, bool normalize = false, bool postProcess = true);
+[[nodiscard]] Mesh loadMesh(const std::filesystem::path& file);

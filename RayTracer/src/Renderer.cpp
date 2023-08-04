@@ -52,7 +52,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 {
 	m_activeScene = &scene;
 	m_activeCamera = &camera;
-
+#define MT 0
 #if DEBUG
 	for (uint32_t y = 0; y < m_finalImage->GetHeight(); y++)
 	{
@@ -97,11 +97,11 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	ray.origin = m_activeCamera->GetPosition();
 	ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
 	//std::cout<<glm::length(ray.direction)<<std::endl;
-
+	//std::cout <<m_activeScene->triangles.size()<<std::endl;
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	HitInfo hitInfo;
-	int bounces = 3;
+	int bounces = 1;
 	for (int i = 0; i < bounces; i++) {
 		//"reset" ray
 		ray.t = -1;
@@ -110,7 +110,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 		traceRay(ray, hitInfo);
 		
 		if (ray.t > 0) {
-
+			//std::cout << ray.t << std::endl;
 			ray.direction = glm::reflect(ray.direction, hitInfo.normal);
 			//very important to avoid self-intersection by using an offset
 			ray.origin = hitInfo.position + 0.0001f * ray.direction;
@@ -128,10 +128,6 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			i = bounces;
 		
 	}
-	if (debug) {
-		std::cout<<"hitInfo position: "<<hitInfo.position.x<<" "<<hitInfo.position.y<<" "<<hitInfo.position.z<<std::endl;
-		std::cout << "camera position: " << m_activeCamera->GetPosition().x << " " << m_activeCamera->GetPosition().y << " " << m_activeCamera->GetPosition().z << std::endl;
-	}
 	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
 	return finalColor;
 }
@@ -144,15 +140,9 @@ void Renderer::traceRay(Ray& ray, HitInfo& hitInfo)
 		intersectSphere(ray, sphere, hitInfo);
 	}
 
-	for (const Mesh& mesh : m_activeScene->meshes)
+	for (const Triangle& triangle : m_activeScene->triangles)
 	{
-		for (const glm::uvec3& triangle : mesh.triangles) {
-			Vertex v0 = mesh.vertices[triangle.x];
-			Vertex v1 = mesh.vertices[triangle.y];
-			Vertex v2 = mesh.vertices[triangle.z];
-			intersectTriangle(ray, v0, v1, v2, hitInfo);
-			//hitInfo.material = mesh.material;
-		}
+		intersectTriangle(ray, hitInfo, *m_activeScene, triangle);
 	}	
 
 }

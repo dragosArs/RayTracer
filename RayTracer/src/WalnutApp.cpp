@@ -8,6 +8,7 @@
 #include "Camera.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include "rapidobj.hpp"
 
 using namespace Walnut;
 
@@ -18,14 +19,13 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 		
-		{
+		loadScene("\\assets\\objects\\cube.obj", "\\assets\\materials\\cube.mtl", m_Scene);
+		//std::cout << "Loaded scene with " << m_Scene.triangles.size() << " meshes" << std::endl;
 			PointLight pointLight;
 			pointLight.position = { 0.0f, 3.0f, 0.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
-		}
 
-		m_Scene.meshes = loadMeshes("assets/objects/cube.obj");
 	}
 
 	virtual void OnUpdate(float ts) override

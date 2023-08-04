@@ -42,6 +42,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 #include <utility>
 #include <variant>
 #include <vector>
+#include <iostream>
 
 #ifdef __linux__
 

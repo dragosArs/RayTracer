@@ -4,7 +4,27 @@
 #include <vector>
 #include <variant>
 #include <filesystem>
-#include "mesh.h"
+
+struct Index {
+    uint32_t positionIndex;
+    uint32_t normalIndex;
+    uint32_t texCoordIndex;
+    uint32_t materialIndex;
+};
+
+struct Triangle {
+    Index vertex0;
+    Index vertex1;
+    Index vertex2;
+    uint32_t materialIndex{0};
+};
+
+struct Material {
+    glm::vec3 kd; // Diffuse color.
+    glm::vec3 ks{ 0.0f };
+    float shininess{ 1.0f };
+    float transparency{ 1.0f };
+};
 
 struct Plane {
     float D = 0.0f;
@@ -40,7 +60,12 @@ struct ParallelogramLight {
 
 //Use a vector of materials, not only to reuse materials but also pass indices insetad of full materials
 struct Scene {
-    std::vector<Mesh> meshes;
+
+    std::vector<glm::vec3> positions;
+    std::vector<glm::vec3> normals;
+    std::vector<glm::vec2> texCoords;
+    std::vector<Material> materials;
+    std::vector<Triangle> triangles;
     std::vector<Sphere> spheres;
 
     //std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lightSources;
@@ -48,4 +73,4 @@ struct Scene {
 };
 
 // Load a prebuilt scene.
-Scene loadScene(const std::filesystem::path& dataDir);
+void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene);

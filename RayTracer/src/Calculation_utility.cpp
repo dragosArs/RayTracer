@@ -60,15 +60,24 @@ bool intersectSphere(const Ray& ray, const Sphere& sphere) {
 }
 
 
-void intersectTriangle(Ray& ray, const Vertex& v0, const Vertex& v1, const Vertex& v2, HitInfo& hitInfo) {
+void intersectTriangle(Ray& ray, HitInfo& hitInfo, const Scene& scene, const Triangle& triangle) {
     const float EPSILON = 0.0000001f;
-    glm::vec3 vertex0 = v0.position;
-    glm::vec3 vertex1 = v1.position;
-    glm::vec3 vertex2 = v2.position;
+    glm::vec3 posVertex0 = scene.positions[triangle.vertex0.positionIndex];
+    glm::vec3 posVertex1 = scene.positions[triangle.vertex1.positionIndex];
+    glm::vec3 posVertex2 = scene.positions[triangle.vertex2.positionIndex];
+    glm::vec3 normalVertex0{0.0f};
+    glm::vec3 normalVertex1{0.0f};
+    glm::vec3 normalVertex2{0.0f};
+    if(triangle.vertex0.normalIndex >= 0)
+        normalVertex0 = scene.normals[triangle.vertex0.normalIndex];
+    if (triangle.vertex1.normalIndex >= 0)
+        normalVertex1 = scene.normals[triangle.vertex1.normalIndex];
+    if (triangle.vertex2.normalIndex >= 0)
+        normalVertex2 = scene.normals[triangle.vertex2.normalIndex];
     glm::vec3 edge1, edge2, h, s, q;
     float a, f, u, v;
-    edge1 = vertex1 - vertex0;
-    edge2 = vertex2 - vertex0;
+    edge1 = posVertex1 - posVertex0;
+    edge2 = posVertex2 - posVertex0;
     h = glm::cross(ray.direction, edge2);
     a = glm::dot(edge1, h);
 
@@ -76,7 +85,7 @@ void intersectTriangle(Ray& ray, const Vertex& v0, const Vertex& v1, const Verte
         return;    // This ray is parallel to this triangle.
 
     f = 1.0f / a;
-    s = ray.origin - vertex0;
+    s = ray.origin - posVertex0;
     u = f * glm::dot(s, h);
 
     if (u < 0.0f || u > 1.0f)
@@ -95,8 +104,9 @@ void intersectTriangle(Ray& ray, const Vertex& v0, const Vertex& v1, const Verte
     if(t > EPSILON && (ray.t == -1.0f || ray.t > t)) {
         //spent too much debugging this... I wasn't updating ray.t:(((((((
         ray.t = t;
-        hitInfo.normal = u * v0.normal + v * v1.normal + (1.0f - u - v) * v2.normal;
+        //hitInfo.normal = u * normalVertex0 + v * normalVertex1 + (1.0f - u - v) * normalVertex2;
+        hitInfo.normal = glm::cross(edge2, edge1);
         hitInfo.position = ray.origin + t * ray.direction;
-        Material greenSphere;
+        hitInfo.material = scene.materials[triangle.materialIndex];
     }
 }

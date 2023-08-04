@@ -24,6 +24,8 @@ public:
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
+
+		m_Scene.meshes = loadMeshes("assets/objects/cube.obj");
 	}
 
 	virtual void OnUpdate(float ts) override

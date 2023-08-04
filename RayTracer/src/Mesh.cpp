@@ -1,6 +1,9 @@
 #include "Mesh.h"
 
-[[nodiscard]] Mesh loadMesh(const std::filesystem::path& file) {
-	Mesh mesh;
-	return mesh;
+[[nodiscard]] std::vector<Mesh> loadMeshes(const std::filesystem::path& file) {
+	std::vector<Mesh> meshes;
+	rapidobj::Result result = rapidobj::ParseFile(file.string().c_str());
+	rapidobj::Triangulate(result);
+
+		return meshes;
 }

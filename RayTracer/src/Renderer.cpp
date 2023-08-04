@@ -151,7 +151,7 @@ void Renderer::traceRay(Ray& ray, HitInfo& hitInfo)
 			Vertex v1 = mesh.vertices[triangle.y];
 			Vertex v2 = mesh.vertices[triangle.z];
 			intersectTriangle(ray, v0, v1, v2, hitInfo);
-			hitInfo.material = mesh.material;
+			//hitInfo.material = mesh.material;
 		}
 	}	
 

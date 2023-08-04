@@ -4,7 +4,6 @@
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 #include <filesystem>
-#include "Mesh.h"
 #include "rapidobj.hpp"
 
 
@@ -50,7 +49,7 @@ struct Mesh {
 	std::vector<Vertex> vertices;
 	// A triangle contains a triplet of values corresponding to the indices of the 3 vertices in the vertices array.
 	std::vector<glm::uvec3> triangles;
-	Material material;
+	std::vector<Material> materials;
 };
 
-[[nodiscard]] Mesh loadMesh(const std::filesystem::path& file);
+[[nodiscard]] std::vector<Mesh> loadMeshes(const std::filesystem::path& file);

@@ -19,12 +19,53 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 		
-		loadScene("\\assets\\objects\\cube.obj", "\\assets\\materials\\cube.mtl", m_Scene);
-		//std::cout << "Loaded scene with " << m_Scene.triangles.size() << " meshes" << std::endl;
+		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
+
+		{
 			PointLight pointLight;
-			pointLight.position = { 0.0f, 3.0f, 0.0f };
+			pointLight.position = { 0.0f, 5.0f, 0.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { 2.0f, 5.0f, 0.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { 0.0f, 5.0f, -1.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { -2.0f, -3.0f, -1.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { -2.0f, -3.0f, 3.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { 5.0f, 10.0f, 3.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+
+
+
 
 	}
 

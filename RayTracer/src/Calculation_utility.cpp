@@ -68,11 +68,12 @@ void intersectTriangle(Ray& ray, HitInfo& hitInfo, const Scene& scene, const Tri
     glm::vec3 normalVertex0{0.0f};
     glm::vec3 normalVertex1{0.0f};
     glm::vec3 normalVertex2{0.0f};
-    if(triangle.vertex0.normalIndex >= 0)
+    //triangle.vertex0.normalIndex goes out of bounds here for whatever reason
+    if(triangle.vertex0.normalIndex >= 0)// && triangle.vertex0.normalIndex < scene.materials.size())
         normalVertex0 = scene.normals[triangle.vertex0.normalIndex];
-    if (triangle.vertex1.normalIndex >= 0)
+    if (triangle.vertex1.normalIndex >= 0)// && triangle.vertex1.normalIndex < scene.materials.size())
         normalVertex1 = scene.normals[triangle.vertex1.normalIndex];
-    if (triangle.vertex2.normalIndex >= 0)
+    if (triangle.vertex2.normalIndex >= 0)// && triangle.vertex2.normalIndex < scene.materials.size())
         normalVertex2 = scene.normals[triangle.vertex2.normalIndex];
     glm::vec3 edge1, edge2, h, s, q;
     float a, f, u, v;
@@ -105,7 +106,7 @@ void intersectTriangle(Ray& ray, HitInfo& hitInfo, const Scene& scene, const Tri
         //spent too much debugging this... I wasn't updating ray.t:(((((((
         ray.t = t;
         //hitInfo.normal = u * normalVertex0 + v * normalVertex1 + (1.0f - u - v) * normalVertex2;
-        hitInfo.normal = glm::cross(edge2, edge1);
+        hitInfo.normal = u * normalVertex2 + v * normalVertex1 + (1.0f - u - v) * normalVertex0;
         hitInfo.position = ray.origin + t * ray.direction;
         hitInfo.material = scene.materials[triangle.materialIndex];
     }

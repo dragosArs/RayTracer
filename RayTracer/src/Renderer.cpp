@@ -96,8 +96,6 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	Ray shadowRay;
 	ray.origin = m_activeCamera->GetPosition();
 	ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
-	//std::cout<<glm::length(ray.direction)<<std::endl;
-	//std::cout <<m_activeScene->triangles.size()<<std::endl;
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	HitInfo hitInfo;
@@ -113,12 +111,12 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			//std::cout << ray.t << std::endl;
 			ray.direction = glm::reflect(ray.direction, hitInfo.normal);
 			//very important to avoid self-intersection by using an offset
-			ray.origin = hitInfo.position + 0.0001f * ray.direction;
+			ray.origin = hitInfo.position + 0.000001f * ray.direction;
 
 
 			for (const PointLight& pointLight : m_activeScene->lightSources) {
 				shadowRay.direction = glm::normalize(pointLight.position - hitInfo.position);
-				shadowRay.origin = hitInfo.position + 0.0001f * shadowRay.direction;
+				shadowRay.origin = hitInfo.position + 0.000001f * shadowRay.direction;
 				//reflective component should contribute proportionally to the specular component of the material it reflects off of
 				if (!isInShadow(shadowRay))
 					color += reflectiveContribution * phongFull(hitInfo, *m_activeCamera, pointLight);

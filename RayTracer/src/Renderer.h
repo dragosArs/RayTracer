@@ -28,13 +28,8 @@ public:
 private:
 
 	glm::vec3 perPixel(uint32_t x, uint32_t y, bool debug); // RayGen
-	void traceRay(Ray& ray, HitInfo& hitInfo);
+	void traceRay(Ray& ray, BasicHitInfo& hitInfo);
 	bool isInShadow(const Ray& ray);
-	bool intersectRayWithPlane(const Plane& plane, Ray& ray);
-	bool pointInTriangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& n, const glm::vec3& p);
-	bool intersectRayWithTriangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, Ray& ray, HitInfo& hitInfo);
-	bool intersectRayWithShape(const Sphere& sphere, Ray& ray, HitInfo& hitInfo);
-	float intersectRayWithShape(const AxisAlignedBox& box, Ray& ray);
 
 private:
 	std::shared_ptr<Walnut::Image> m_finalImage;

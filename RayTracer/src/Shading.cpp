@@ -1,12 +1,12 @@
 #include "Shading.h"
 #include <iostream>
 
-glm::vec3 phongFull(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
+glm::vec3 phongFull(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
     return diffuseOnly(hitInfo, pointLight) + blinnPhongSpecularOnly(hitInfo, camera, pointLight);
 }
 
-glm::vec3 diffuseOnly(const HitInfo& hitInfo, const PointLight& pointLight)
+glm::vec3 diffuseOnly(const FullHitInfo& hitInfo, const PointLight& pointLight)
 {
     glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
     float value = glm::dot(lightDir, hitInfo.normal);
@@ -15,7 +15,7 @@ glm::vec3 diffuseOnly(const HitInfo& hitInfo, const PointLight& pointLight)
     return hitInfo.material.kd * value * pointLight.color;
 }
 
-glm::vec3 phongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
+glm::vec3 phongSpecularOnly(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
     glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
     glm::vec3 cameraDir = glm::normalize(camera.GetPosition() - hitInfo.position);
@@ -32,7 +32,7 @@ glm::vec3 phongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const 
     return pow(value, 50.0f) * hitInfo.material.ks *  pointLight.color;
 }
 
-glm::vec3 blinnPhongSpecularOnly(const HitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
+glm::vec3 blinnPhongSpecularOnly(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
     glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
     glm::vec3 cameraDir = glm::normalize(camera.GetPosition() - hitInfo.position);

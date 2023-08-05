@@ -1,7 +1,7 @@
 #include "Calculation_utility.h"
 #include <iostream>
 
-void intersectSphere(Ray& ray, const Sphere& sphere, HitInfo& hitInfo) {
+void intersectSphere(Ray& ray, const Sphere& sphere, BasicHitInfo& hitInfo) {
     glm::vec3 d = ray.direction;
     glm::vec3 o = ray.origin - sphere.center;
     float P1, P2;
@@ -30,9 +30,11 @@ void intersectSphere(Ray& ray, const Sphere& sphere, HitInfo& hitInfo) {
 
     if ((ray.t == - 1.0f || ray.t > t) && t > 0.0f) {
         ray.t = t;
+        /*
         hitInfo.position = ray.origin + t * ray.direction;
         hitInfo.material = sphere.material;
         hitInfo.normal = glm::normalize(o + t * ray.direction);
+        */
     }
 }
 
@@ -60,21 +62,12 @@ bool intersectSphere(const Ray& ray, const Sphere& sphere) {
 }
 
 
-void intersectTriangle(Ray& ray, HitInfo& hitInfo, const Scene& scene, const Triangle& triangle) {
+void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Mesh& mesh, const uint32_t triangleId) {
     const float EPSILON = 0.0000001f;
-    glm::vec3 posVertex0 = scene.positions[triangle.vertex0.positionIndex];
-    glm::vec3 posVertex1 = scene.positions[triangle.vertex1.positionIndex];
-    glm::vec3 posVertex2 = scene.positions[triangle.vertex2.positionIndex];
-    glm::vec3 normalVertex0{0.0f};
-    glm::vec3 normalVertex1{0.0f};
-    glm::vec3 normalVertex2{0.0f};
-    //triangle.vertex0.normalIndex goes out of bounds here for whatever reason
-    if(triangle.vertex0.normalIndex >= 0)// && triangle.vertex0.normalIndex < scene.materials.size())
-        normalVertex0 = scene.normals[triangle.vertex0.normalIndex];
-    if (triangle.vertex1.normalIndex >= 0)// && triangle.vertex1.normalIndex < scene.materials.size())
-        normalVertex1 = scene.normals[triangle.vertex1.normalIndex];
-    if (triangle.vertex2.normalIndex >= 0)// && triangle.vertex2.normalIndex < scene.materials.size())
-        normalVertex2 = scene.normals[triangle.vertex2.normalIndex];
+    Triangle triangle = mesh.triangles[triangleId];
+    glm::vec3 posVertex0 = mesh.vertices[triangle.vertexIndex0].position;
+    glm::vec3 posVertex1 = mesh.vertices[triangle.vertexIndex1].position;
+    glm::vec3 posVertex2 = mesh.vertices[triangle.vertexIndex2].position;
     glm::vec3 edge1, edge2, h, s, q;
     float a, f, u, v;
     edge1 = posVertex1 - posVertex0;
@@ -102,12 +95,12 @@ void intersectTriangle(Ray& ray, HitInfo& hitInfo, const Scene& scene, const Tri
     float t = f * glm::dot(edge2, q);
 
     // ray intersection
+    //TODO: it is better to just keep track of the intersected triangle index(and u and v for barycentric interpolation), and let the shader access the relevant primtiives,
+    //That's because the shader is called at most &bounces times per pixel, while the update conditon below is called every time we intersect a triangle that is closer than the current one.
+    //What if there are 10 triangles that intersect the ray, but we only want to keep the closest one? We would have to update the ray.t 10 times.
     if(t > EPSILON && (ray.t == -1.0f || ray.t > t)) {
         //spent too much debugging this... I wasn't updating ray.t:(((((((
         ray.t = t;
-        //hitInfo.normal = u * normalVertex0 + v * normalVertex1 + (1.0f - u - v) * normalVertex2;
-        hitInfo.normal = u * normalVertex2 + v * normalVertex1 + (1.0f - u - v) * normalVertex0;
-        hitInfo.position = ray.origin + t * ray.direction;
-        hitInfo.material = scene.materials[triangle.materialIndex];
+        hitInfo.triangleIndex = triangleId;
     }
 }

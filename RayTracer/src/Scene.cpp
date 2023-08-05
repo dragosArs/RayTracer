@@ -1,6 +1,35 @@
 #include "Scene.h"
-#include "rapidobj.hpp"
-[[nodiscard]] void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene) {
+
+
+
+
+struct Tuple {
+	uint32_t posIndex;
+	uint32_t normIndex;
+	uint32_t texIndex;
+	/*
+	bool operator==(const Tuple& other) const {
+		return (posIndex == other.posIndex && normIndex == other.normIndex && texIndex == other.texIndex);
+	}
+	*/
+};
+
+inline bool operator==(const Tuple& lhs, const Tuple& rhs) {
+	return (lhs.posIndex == rhs.posIndex && lhs.normIndex == rhs.normIndex && lhs.texIndex == rhs.texIndex);
+}
+
+template <>
+struct std::hash<Tuple> {
+	std::size_t operator()(const Tuple& ti) const {
+		// Combine the hash of the three integers using a simple hash function
+		return std::hash<int>()(ti.posIndex) ^ (std::hash<int>()(ti.normIndex) << 1) ^ (std::hash<int>()(ti.texIndex) << 2);
+	}
+};
+
+
+
+[[nodiscard]]
+void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene) {
 	
 	auto objectFullFilePath = std::filesystem::current_path().string() + objectFilePath.string();
 	auto materialFullFilePath = std::filesystem::current_path().string() + materialFilePath.string();
@@ -9,73 +38,79 @@
 	if (result.error) {
 		std::cout << result.error.code.message() << '\n';
 	}
-	//std::cout << "Number of positions: " << result.attributes.positions.size() << std::endl;
-	//std::cout << "Number of materials: " << result.materials.size() << std::endl;
 	
 	rapidobj::Triangulate(result);
 
-	uint32_t facesCount = 0;
-	for (int i = 0; i < result.attributes.positions.size(); i += 3) {
-		float element1 = result.attributes.positions[i];
-		float element2 = result.attributes.positions[i + 1];
-		float element3 = result.attributes.positions[i + 2];
-		scene.positions.push_back(glm::vec3(element1, element2, element3));
+	std::vector<Triangle> triangles;
+	std::vector<Vertex> vertices;
+	int j = 0;
+	for (const rapidobj::Shape& shape : result.shapes) {
+		createUniqueVertices(shape.mesh, result.attributes, triangles, vertices);
+		scene.meshes.push_back({j, vertices, triangles });
+		j++;
 	}
+}
 
-	for (int i = 0; i < result.attributes.normals.size(); i += 2) {
-		float element1 = result.attributes.normals[i];
-		float element2 = result.attributes.normals[i + 1];
-		float element3 = result.attributes.normals[i + 2];
-		scene.normals.push_back(glm::vec3(element1, element2, element3));
-	}
 
-	for (int i = 0; i < result.attributes.texcoords.size(); i += 2) {
-		float element1 = result.attributes.texcoords[i];
-		float element2 = result.attributes.texcoords[i + 1];
-		scene.texCoords.push_back(glm::vec2(element1, element2));
-	}
+//"returns" a vector of triangles and vertices
+[[nodiscard]]
+void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes, std::vector<Triangle> triangles, std::vector<Vertex> vertices) {
+	std::unordered_map<Tuple, int> uniqueIndexTuples;
 
-	for (int i = 0; i < result.materials.size(); i += 1) {
-		Material material;
-		material.kd = glm::vec3(result.materials[i].diffuse[0], result.materials[i].diffuse[1], result.materials[i].diffuse[2]);
-		material.ks = glm::vec3(result.materials[i].specular[0], result.materials[i].specular[1], result.materials[i].specular[2]);
-		material.shininess = result.materials[i].shininess;
-		material.transparency = result.materials[i].dissolve;
-		scene.materials.push_back(material);
-	}
-
-	for (const rapidobj::Shape& shape: result.shapes) {
-		//std::cout << "Number of material_ids for mesh" << shape.mesh.material_ids.size() << std::endl;
-		uint32_t j = 0;
-		for (uint32_t i = 0; i < shape.mesh.num_face_vertices.size(); i++) {
-			//std::cout << "Number of material_ids for face j" << shape.mesh.material_ids[i] << std::endl;
-			//if (shape.mesh.num_face_vertices[i] == 3) {
-				Triangle triangle;
-				triangle.materialIndex = shape.mesh.material_ids[i];
-				Index vertex0;
-				vertex0.positionIndex = shape.mesh.indices[j].position_index;
-				vertex0.normalIndex = shape.mesh.indices[j].normal_index;
-				vertex0.texCoordIndex = shape.mesh.indices[j].texcoord_index;
-				vertex0.materialIndex = shape.mesh.material_ids[i];
-				triangle.vertex0 = vertex0;
-
-				Index vertex1;
-				vertex1.positionIndex = shape.mesh.indices[j + 1].position_index;
-				vertex1.normalIndex = shape.mesh.indices[j + 1].normal_index;
-				vertex1.texCoordIndex = shape.mesh.indices[j + 1].texcoord_index;
-				vertex1.materialIndex = shape.mesh.material_ids[i];
-				triangle.vertex1 = vertex1;
-
-				Index vertex2;
-				vertex2.positionIndex = shape.mesh.indices[j + 2].position_index;
-				vertex2.normalIndex = shape.mesh.indices[j + 2].normal_index;
-				vertex2.texCoordIndex = shape.mesh.indices[j + 2].texcoord_index;
-				vertex2.materialIndex = shape.mesh.material_ids[i];
-				triangle.vertex2 = vertex2;
-				
-				scene.triangles.push_back(triangle);
-			//}
-			j += shape.mesh.num_face_vertices[i];
+	for (uint32_t i = 0; i < mesh.indices.size(); i += 3) {
+		Tuple tuple1 = {mesh.indices[i].position_index, mesh.indices[i].normal_index, mesh.indices[i].texcoord_index};
+		uint32_t index1 = 0;
+		auto it1 = std::find(uniqueIndexTuples.begin(), uniqueIndexTuples.end(), tuple1);
+		if(it1 != uniqueIndexTuples.end()) {
+			index1 = it1->second;
 		}
+		else {
+			uniqueIndexTuples[tuple1] = vertices.size();
+			glm::vec3 pos = { attributes.positions[tuple1.posIndex], attributes.positions[tuple1.posIndex + 1], attributes.positions[tuple1.posIndex + 2] };
+			glm::vec3 norm = { attributes.normals[tuple1.normIndex], attributes.normals[tuple1.normIndex + 1], attributes.normals[tuple1.normIndex + 2] };
+			glm::vec2 tex = { attributes.texcoords[tuple1.texIndex], attributes.texcoords[tuple1.texIndex + 1] };
+			Vertex vertex = { pos, norm, tex };
+			vertices.push_back(vertex);
+			index1 = vertices.size() - 1;
+			
+		}
+
+		Tuple tuple2 = { mesh.indices[i + 1].position_index, mesh.indices[i + 1].normal_index, mesh.indices[i + 1].texcoord_index };
+		uint32_t index2 = 0;
+		auto it2 = std::find(uniqueIndexTuples.begin(), uniqueIndexTuples.end(), tuple2);
+		if (it2 != uniqueIndexTuples.end()) {
+			index2 = it2->second;
+		}
+		else {
+			uniqueIndexTuples[tuple2] = vertices.size();
+			glm::vec3 pos = { attributes.positions[tuple2.posIndex], attributes.positions[tuple2.posIndex + 1], attributes.positions[tuple2.posIndex + 2] };
+			glm::vec3 norm = { attributes.normals[tuple2.normIndex], attributes.normals[tuple2.normIndex + 1], attributes.normals[tuple2.normIndex + 2] };
+			glm::vec2 tex = { attributes.texcoords[tuple2.texIndex], attributes.texcoords[tuple2.texIndex + 1] };
+			Vertex vertex = { pos, norm, tex };
+			vertices.push_back(vertex);
+			index2 = vertices.size() - 1;
+
+		}
+
+		Tuple tuple3 = { mesh.indices[i + 2].position_index, mesh.indices[i + 2].normal_index, mesh.indices[i + 2].texcoord_index };
+		uint32_t index3 = 0;
+		auto it3 = std::find(uniqueIndexTuples.begin(), uniqueIndexTuples.end(), tuple3);
+		if (it3 != uniqueIndexTuples.end()) {
+			index3 = it3->second;
+		}
+		else {
+			uniqueIndexTuples[tuple3] = vertices.size();
+			glm::vec3 pos = { attributes.positions[tuple3.posIndex], attributes.positions[tuple3.posIndex + 1], attributes.positions[tuple3.posIndex + 2] };
+			glm::vec3 norm = { attributes.normals[tuple3.normIndex], attributes.normals[tuple3.normIndex + 1], attributes.normals[tuple3.normIndex + 2] };
+			glm::vec2 tex = { attributes.texcoords[tuple3.texIndex], attributes.texcoords[tuple3.texIndex + 1] };
+			Vertex vertex = { pos, norm, tex };
+			vertices.push_back(vertex);
+			index3 = vertices.size() - 1;
+
+		}
+		//this has to be done when all three vertices are processed
+		triangles.push_back(Triangle{ index1, index2, index3, (uint32_t) mesh.material_ids[i / 3]});
 	}
+
+
 }

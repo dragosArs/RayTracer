@@ -10,11 +10,18 @@ struct Ray
 	float t{ -1};
 };
 
-struct HitInfo
+struct BasicHitInfo
 {
-	Material material;
-	glm::vec3 position = glm::vec3{ 0.0f };
-	glm::vec3 normal = glm::vec3{ 0.0f };
+	int triangleIndex = 0;
+	int meshIndex = 0;
+	int barU = 0;
+	int barV = 0;
+};
 
-	int object_index = 0;
+struct FullHitInfo
+{
+	glm::vec3 position;
+	glm::vec3 normal;
+	//glm::vec2 texCoord;
+	Material material;
 };

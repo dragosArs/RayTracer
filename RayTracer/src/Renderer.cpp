@@ -98,28 +98,38 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
-	HitInfo hitInfo;
+	BasicHitInfo basicHitInfo;
 	int bounces = 1;
 	for (int i = 0; i < bounces; i++) {
 		//"reset" ray
 		ray.t = -1;
-		if (i >= 1)
-			reflectiveContribution = hitInfo.material.ks * reflectiveContribution;
-		traceRay(ray, hitInfo);
+		//if (i >= 1)
+			//reflectiveContribution = hitInfo.material.ks * reflectiveContribution;
+		traceRay(ray, basicHitInfo);
 		
 		if (ray.t > 0) {
-			//std::cout << ray.t << std::endl;
-			ray.direction = glm::reflect(ray.direction, hitInfo.normal);
+			// fullHitInfo creation to move to a new function
+			Mesh mesh = m_activeScene->meshes[basicHitInfo.meshIndex];
+			Triangle triangle = mesh.triangles[basicHitInfo.triangleIndex];
+			Vertex v0 = m_activeScene->meshes[basicHitInfo.meshIndex].vertices[triangle.vertexIndex0];
+			Vertex v1 = m_activeScene->meshes[basicHitInfo.meshIndex].vertices[triangle.vertexIndex1];
+			Vertex v2 = m_activeScene->meshes[basicHitInfo.meshIndex].vertices[triangle.vertexIndex2];
+			float u = basicHitInfo.barU;
+			float v = basicHitInfo.barV;
+			const FullHitInfo fullHitInfo = {ray.origin + ray.t * ray.direction, (1 - u - v) * v0.normal + u * v1.normal + v * v2.normal, m_activeScene->materials[triangle.materialIndex]};
+			//I''l have to see if this is correct
+			glm::vec3 normal = (1 - u - v) * v0.normal + u * v1.normal + v * v2.normal;
+			ray.direction = glm::reflect(ray.direction, normal);
 			//very important to avoid self-intersection by using an offset
-			ray.origin = hitInfo.position + 0.000001f * ray.direction;
+			ray.origin =  + 0.000001f * ray.direction;
 
 
 			for (const PointLight& pointLight : m_activeScene->lightSources) {
-				shadowRay.direction = glm::normalize(pointLight.position - hitInfo.position);
-				shadowRay.origin = hitInfo.position + 0.000001f * shadowRay.direction;
+				shadowRay.direction = glm::normalize(pointLight.position - fullHitInfo.position);
+				shadowRay.origin = fullHitInfo.position + 0.000001f * shadowRay.direction;
 				//reflective component should contribute proportionally to the specular component of the material it reflects off of
 				if (!isInShadow(shadowRay))
-					color += reflectiveContribution * phongFull(hitInfo, *m_activeCamera, pointLight);
+					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
 			}
 		}
 		else
@@ -131,16 +141,19 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 }
 
 //This function doesn't return anything, but changes ray.t and hitInfo
-void Renderer::traceRay(Ray& ray, HitInfo& hitInfo)
+void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 {
 	for (const Sphere& sphere: m_activeScene->spheres)
 	{
 		intersectSphere(ray, sphere, hitInfo);
 	}
 
-	for (const Triangle& triangle : m_activeScene->triangles)
+	for (const Mesh& mesh : m_activeScene->meshes)
 	{
-		intersectTriangle(ray, hitInfo, *m_activeScene, triangle);
+		for (const Triangle& triangle : mesh.triangles)
+		{
+			intersectTriangle(ray, hitInfo, mesh, triangle);
+		}
 	}	
 
 }

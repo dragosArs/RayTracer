@@ -10,6 +10,7 @@ glm::vec3 diffuseOnly(const FullHitInfo& hitInfo, const PointLight& pointLight)
 {
     glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
     float value = glm::dot(lightDir, hitInfo.normal);
+    //std::cout << value << std::endl;
     if (value < 0)
         return glm::vec3(0.0f, 0.0f, 0.0f);
     return hitInfo.material.kd * value * pointLight.color;

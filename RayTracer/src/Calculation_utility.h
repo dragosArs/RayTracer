@@ -5,4 +5,5 @@
 void intersectSphere(Ray& ray, const Sphere& sphere, BasicHitInfo& hitInfo);
 bool intersectSphere(const Ray& ray, const Sphere& sphere);//for shadow rays
 
-void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Mesh& mesh, const Triangle& triangle);
+void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangle);
+bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triangleId);

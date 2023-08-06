@@ -18,50 +18,53 @@ public:
 	ExampleLayer()
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
+
+		loadScene("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl", m_Scene);
+		//loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
 		
-		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
-
 		{
 			PointLight pointLight;
-			pointLight.position = { 0.0f, 5.0f, 0.0f };
+			pointLight.position = { 0.0f, 35.0f, 0.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
 
 		{
 			PointLight pointLight;
-			pointLight.position = { 2.0f, 5.0f, 0.0f };
+			pointLight.position = { 2.0f, 5.0f, 20.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
 
 		{
 			PointLight pointLight;
-			pointLight.position = { 0.0f, 5.0f, -1.0f };
+			pointLight.position = { 0.0f, 25.0f, -21.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
 
 		{
 			PointLight pointLight;
-			pointLight.position = { -2.0f, -3.0f, -1.0f };
+			pointLight.position = { -22.0f, -23.0f, -1.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
 
 		{
 			PointLight pointLight;
-			pointLight.position = { -2.0f, -3.0f, 3.0f };
+			pointLight.position = { -2.0f, -23.0f, 3.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+		
+		{
+			PointLight pointLight;
+			pointLight.position = { 0.005f, 1.98f, 0.0325f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
 
-		{
-			PointLight pointLight;
-			pointLight.position = { 5.0f, 10.0f, 3.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}
+		
 
 
 

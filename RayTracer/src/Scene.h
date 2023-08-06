@@ -37,13 +37,40 @@ struct ParallelogramLight {
 //Use a vector of materials, not only to reuse materials but also pass indices insetad of full materials
 struct Scene {
 
-    std::vector<Mesh> meshes;
     std::vector<Sphere> spheres;
     std::vector<Material> materials;
+    std::vector<Vertex> vertices;
+    std::vector<Triangle> triangles;
     //std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lightSources;
     std::vector<PointLight> lightSources;
 };
 
+
+struct Key {
+    uint32_t posIndex;
+    uint32_t normIndex;
+    uint32_t texIndex;
+    /*
+    bool operator==(const Key& other) const {
+        return (posIndex == other.posIndex && normIndex == other.normIndex && texIndex == other.texIndex);
+    }
+    */
+};
+
+inline bool operator==(const Key& lhs, const Key& rhs) {
+    return (lhs.posIndex == rhs.posIndex) && (lhs.normIndex == rhs.normIndex) && (lhs.texIndex == rhs.texIndex);
+}
+
+template <>
+struct std::hash<Key> {
+    std::size_t operator()(const Key& ti) const {
+        // Combine the hash of the three integers using a simple hash function
+        return std::hash<int>()(ti.posIndex) ^ (std::hash<int>()(ti.normIndex) << 1) ^ (std::hash<int>()(ti.texIndex) << 2);
+    }
+};
+
+
 // Load a prebuilt scene.
 void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene);
-void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes, std::vector<Triangle> triangles, std::vector<Vertex> vertices);
+void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes, std::vector<Triangle>& triangles, std::vector<Vertex>& vertices);
+uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::vector<Vertex>& vertices, std::unordered_map<Key, int>& uniqueIndexKeys);

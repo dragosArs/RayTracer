@@ -62,12 +62,12 @@ bool intersectSphere(const Ray& ray, const Sphere& sphere) {
 }
 
 
-void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Mesh& mesh, const uint32_t triangleId) {
+void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId) {
     const float EPSILON = 0.0000001f;
-    Triangle triangle = mesh.triangles[triangleId];
-    glm::vec3 posVertex0 = mesh.vertices[triangle.vertexIndex0].position;
-    glm::vec3 posVertex1 = mesh.vertices[triangle.vertexIndex1].position;
-    glm::vec3 posVertex2 = mesh.vertices[triangle.vertexIndex2].position;
+    Triangle triangle = scene.triangles[triangleId];
+    glm::vec3 posVertex0 = scene.vertices[triangle.vertexIndex0].position;
+    glm::vec3 posVertex1 = scene.vertices[triangle.vertexIndex1].position;
+    glm::vec3 posVertex2 = scene.vertices[triangle.vertexIndex2].position;
     glm::vec3 edge1, edge2, h, s, q;
     float a, f, u, v;
     edge1 = posVertex1 - posVertex0;
@@ -94,13 +94,47 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Mesh& mesh, const 
     // At this stage we can compute t to find out where the intersection point is on the line.
     float t = f * glm::dot(edge2, q);
 
-    // ray intersection
-    //TODO: it is better to just keep track of the intersected triangle index(and u and v for barycentric interpolation), and let the shader access the relevant primtiives,
-    //That's because the shader is called at most &bounces times per pixel, while the update conditon below is called every time we intersect a triangle that is closer than the current one.
-    //What if there are 10 triangles that intersect the ray, but we only want to keep the closest one? We would have to update the ray.t 10 times.
+    //The shader is called once per ray that successfuly hits an object, while the update conditon below is called every time we intersect a triangle that is closer than the current one.
+    //What if there are 10 triangles that intersect the ray, while we are only interested in the closest one? We would have to update the full hit info 10 times. Better to perform the update
+    //on a smaller data structure, and only update the full hit info once we know we have the closest triangle.
     if(t > EPSILON && (ray.t == -1.0f || ray.t > t)) {
-        //spent too much debugging this... I wasn't updating ray.t:(((((((
         ray.t = t;
         hitInfo.triangleIndex = triangleId;
+        hitInfo.barU = u;
+        hitInfo.barV = v;
     }
+}
+
+bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triangleId) {
+    const float EPSILON = 0.0000001f;
+    Triangle triangle = scene.triangles[triangleId];
+    glm::vec3 posVertex0 = scene.vertices[triangle.vertexIndex0].position;
+    glm::vec3 posVertex1 = scene.vertices[triangle.vertexIndex1].position;
+    glm::vec3 posVertex2 = scene.vertices[triangle.vertexIndex2].position;
+    glm::vec3 edge1, edge2, h, s, q;
+    float a, f, u, v;
+    edge1 = posVertex1 - posVertex0;
+    edge2 = posVertex2 - posVertex0;
+    h = glm::cross(ray.direction, edge2);
+    a = glm::dot(edge1, h);
+
+    if (a > -EPSILON && a < EPSILON)
+        false;    // This ray is parallel to this triangle.
+
+    f = 1.0f / a;
+    s = ray.origin - posVertex0;
+    u = f * glm::dot(s, h);
+
+    if (u < 0.0f || u > 1.0f)
+        return false;
+
+    q = glm::cross(s, edge1);
+    v = f * glm::dot(ray.direction, q);
+
+    if (v < 0.0f || u + v > 1.0f)
+        return false;
+
+    // At this stage we can compute t to find out where the intersection point is on the line.
+    float t = f * glm::dot(edge2, q);
+    return t > EPSILON;
 }

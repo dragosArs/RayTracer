@@ -19,8 +19,8 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 
-		loadScene("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl", m_Scene);
-		//loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
+		//loadScene("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl", m_Scene);
+		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
 		
 		{
 			PointLight pointLight;
@@ -56,13 +56,14 @@ public:
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
-		
+		/*
 		{
 			PointLight pointLight;
 			pointLight.position = { 0.005f, 1.98f, 0.0325f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
+		*/
 
 		
 

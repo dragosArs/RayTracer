@@ -98,7 +98,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	BasicHitInfo basicHitInfo;
-	int bounces = 3;
+	int bounces = 1;
 	for (int i = 0; i < bounces; i++) {
 		//"reset" ray
 		ray.t = -1.0f;
@@ -171,7 +171,9 @@ FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo
 	Vertex v2 = scene->vertices[triangle.vertexIndex2];
 	float u = basicHitInfo.barU;
 	float v = basicHitInfo.barV;
-
-	return FullHitInfo{ ray.origin + ray.t * ray.direction,  u * v0.normal + v * v1.normal + (1 - u - v) * v2.normal, scene->materials[triangle.materialIndex] };
+	glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
+	//glm::vec3 normal = u * v0.normal + v * v1.normal + (1 - u - v) * v2.normal;
+	glm::vec3 normal = (1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal;
+	return FullHitInfo{ hitPos, normal, scene->materials[triangle.materialIndex] };
 }
 

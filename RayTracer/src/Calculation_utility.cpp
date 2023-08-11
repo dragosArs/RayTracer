@@ -1,6 +1,7 @@
 #include "Calculation_utility.h"
 #include <iostream>
 
+/*
 void intersectSphere(Ray& ray, const Sphere& sphere, BasicHitInfo& hitInfo) {
     glm::vec3 d = ray.direction;
     glm::vec3 o = ray.origin - sphere.center;
@@ -34,7 +35,7 @@ void intersectSphere(Ray& ray, const Sphere& sphere, BasicHitInfo& hitInfo) {
         hitInfo.position = ray.origin + t * ray.direction;
         hitInfo.material = sphere.material;
         hitInfo.normal = glm::normalize(o + t * ray.direction);
-        */
+        
     }
 }
 
@@ -60,7 +61,24 @@ bool intersectSphere(const Ray& ray, const Sphere& sphere) {
 
     return P1 >= 0.0f || P2 >= 0.0f;
 }
+*/
 
+bool intersectAABB(const Ray& ray, const AABB& box) {
+    double tx1 = (box.lower.x - ray.origin.x) * ray.invDirection.x;
+    
+    double tx2 = (box.upper.x - ray.origin.x) * ray.invDirection.x;
+
+    double tmin = std::min(tx1, tx2);
+    double tmax = std::max(tx1, tx2);
+
+    double ty1 = (box.lower.y - ray.origin.y) * ray.invDirection.y;
+    double ty2 = (box.upper.y - ray.origin.y) * ray.invDirection.y;
+
+    tmin = std::max(tmin, std::min(ty1, ty2));
+    tmax = std::min(tmax, std::max(ty1, ty2));
+
+    return tmax >= tmin && tmax >= 0;
+}
 
 void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId) {
     const float EPSILON = 0.0000001f;
@@ -138,3 +156,5 @@ bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triang
     float t = f * glm::dot(edge2, q);
     return t > EPSILON;
 }
+
+

@@ -4,19 +4,8 @@
 #include <vector>
 #include <variant>
 #include <filesystem>
-#include "Mesh.h"
+#include "Bvh.h"
 #include "rapidobj.hpp"
-
-struct AxisAlignedBox {
-    glm::vec3 lower { 0.0f };
-    glm::vec3 upper { 1.0f };
-};
-
-struct Sphere {
-    glm::vec3 center { 0.0f };
-    float radius = 1.0f;
-    Material material;
-};
 
 struct PointLight {
     glm::vec3 position;
@@ -36,11 +25,10 @@ struct ParallelogramLight {
 
 //Use a vector of materials, not only to reuse materials but also pass indices insetad of full materials
 struct Scene {
-
-    std::vector<Sphere> spheres;
     std::vector<Material> materials;
     std::vector<Vertex> vertices;
     std::vector<Triangle> triangles;
+    BVH* bvh;
     //std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lightSources;
     std::vector<PointLight> lightSources;
 };
@@ -74,3 +62,4 @@ struct std::hash<Key> {
 void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene);
 void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes, std::vector<Triangle>& triangles, std::vector<Vertex>& vertices);
 uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::vector<Vertex>& vertices, std::unordered_map<Key, int>& uniqueIndexKeys);
+BVH* prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangles, int left, int right, int level);

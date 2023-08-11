@@ -6,6 +6,7 @@
 
 #include <execution>
 #include <iostream>
+#include <queue>
 
 namespace Utils {
 
@@ -95,6 +96,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	Ray shadowRay;
 	ray.origin = m_activeCamera->GetPosition();
 	ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
+	ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	BasicHitInfo basicHitInfo;
@@ -121,8 +123,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			}
 		}
 		else
-			i = bounces;
-		
+			i = bounces;	
 	}
 	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
 	return finalColor;
@@ -131,29 +132,45 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 //This function doesn't return anything, but changes ray.t and hitInfo
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 {
-	for (const Sphere& sphere: m_activeScene->spheres)
-	{
-		intersectSphere(ray, sphere, hitInfo);
+
+	std::queue<const BVH*> queue;
+	const BVH* top = m_activeScene->bvh;
+	queue.push(top);
+	while (queue.size() > 0) {
+		const BVH* cur = queue.front();
+		queue.pop();
+		BVH* leftBvh = cur->left;
+		BVH* rightBvh = cur->right;
+		//std::cout << "rightBvh->triangleIndex: " << rightBvh << std::endl;
+		if (leftBvh != nullptr) {
+			if (leftBvh->triangleIndex == -1) {
+				if (intersectAABB(ray, leftBvh->boundingBox))
+					queue.push(leftBvh);
+			}
+			else {
+				//std::cout << "left triangleIndex: " << leftBvh->triangleIndex << std::endl;
+				intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex);
+			}
+		}
+
+		if (rightBvh != nullptr) {
+			if (rightBvh->triangleIndex == -1) {
+				if (intersectAABB(ray, rightBvh->boundingBox))
+					queue.push(rightBvh);
+			}
+			else {
+				//std::cout << "right triangleIndex: " << rightBvh->triangleIndex << std::endl;
+				intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex);
+			}
+		}
+
 	}
-
-
-	for (std::size_t i = 0; i < m_activeScene->triangles.size(); i++)
-	{
-		intersectTriangle(ray, hitInfo, *m_activeScene, i);
-	}
-
-
+	//intersectTriangle(ray, hitInfo, *m_activeScene, i);
+	
 }
 
 
 bool Renderer::isInShadow(const Ray& ray) {
-
-	for (const Sphere& sphere : m_activeScene->spheres)
-	{
-		if (intersectSphere(ray, sphere)) {
-			return true;
-		}
-	}
 
 	for (std::size_t i = 0; i < m_activeScene->triangles.size(); i++)
 	{

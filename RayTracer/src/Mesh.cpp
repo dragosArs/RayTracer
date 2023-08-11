@@ -14,3 +14,9 @@ std::ostream& operator<<(std::ostream& os, const Material& m) {
 	os << "Transparency: " << m.transparency << std::endl << std::endl;
 	return os;
 }
+
+
+
+glm::vec3 getTriangleCentroid(glm::vec3 pos1, glm::vec3 pos2, glm::vec3 pos3) {
+	return glm::vec3(pos1.x + pos2.x + pos3.x / 3.0f, pos1.y + pos2.y + pos3.y / 3.0f, pos1.z + pos2.z + pos3.z) / 3.0f;
+}

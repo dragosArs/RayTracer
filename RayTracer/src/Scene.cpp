@@ -80,7 +80,7 @@ uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes
 	return index;
 }
 
-BVH* prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangles, int left, int right, int level) {
+std::unique_ptr<BVH> prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangles, int left, int right, int level) {
 	if (level == 0)
 		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
 			return lhs.centroid.z < rhs.centroid.z;
@@ -96,9 +96,9 @@ BVH* prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangl
 
 	int mid = (left + right) / 2;
 	if (left != right) {
-		std::cout << left << ", " << mid << ", " << right << std::endl;
-		BVH* leftBvh = prepBvh(vertices, triangles, left, mid, (level + 1) % 3);
-		BVH* rightBvh = prepBvh(vertices, triangles, mid + 1, right, (level + 1) % 3);
+		//std::cout << left << ", " << mid << ", " << right << std::endl;
+		std::unique_ptr<BVH> leftBvh = std::move(prepBvh(vertices, triangles, left, mid, (level + 1) % 3));
+		std::unique_ptr<BVH> rightBvh = std::move(prepBvh(vertices, triangles, mid + 1, right, (level + 1) % 3));
 		
 		float minX = std::min(leftBvh->boundingBox.lower.x, rightBvh->boundingBox.lower.x);
 		float minY = std::min(leftBvh->boundingBox.lower.y, rightBvh->boundingBox.lower.y);
@@ -110,9 +110,9 @@ BVH* prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangl
 		AABB mergedBox = AABB{ glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
 		
 		//std::cout << leftBvh.triangleIndex << ", " << rightBvh.triangleIndex << std::endl;
-		BVH* bvh = new BVH{ mergedBox, -1 };
-		bvh->left = leftBvh;
-		bvh->right = rightBvh;
+		std::unique_ptr<BVH> bvh(new BVH{ mergedBox, -1 });
+		bvh->left = std::move(leftBvh);
+		bvh->right = std::move(rightBvh);
 		return bvh;
 	}
 	else {
@@ -126,7 +126,8 @@ BVH* prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangl
 		float maxZ = std::max(vertices[triangle.vertexIndex0].position.z, std::max(vertices[triangle.vertexIndex1].position.z, vertices[triangle.vertexIndex2].position.z));
 		//std::cout << left << std::endl;
 		AABB mergedBox = { glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
-		BVH* bvh = new BVH{ mergedBox, left };
+		std::cout << mergedBox.lower.x << ", " << mergedBox.lower.y << ", " << mergedBox.lower.z << ", " << mergedBox.upper.x << ", " << mergedBox.upper.y << ", " << mergedBox.upper.z << std::endl;
+		std::unique_ptr<BVH> bvh(new BVH{ mergedBox, left });
 		return bvh;
 	}
 }

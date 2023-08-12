@@ -5,7 +5,7 @@
 struct BVH {
 	AABB boundingBox;
 	int triangleIndex;
-	BVH* left = nullptr;
-	BVH* right = nullptr;
+	std::unique_ptr<BVH> left = nullptr;
+	std::unique_ptr<BVH> right = nullptr;
 };
 

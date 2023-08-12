@@ -133,35 +133,30 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 {
 
-	std::queue<const BVH*> queue;
-	const BVH* top = m_activeScene->bvh;
-	queue.push(top);
+	std::queue<BVH*> queue;
+	queue.push(m_activeScene->bvh.get());
 	while (queue.size() > 0) {
-		const BVH* cur = queue.front();
+		BVH* cur = queue.front();
 		queue.pop();
-		BVH* leftBvh = cur->left;
-		BVH* rightBvh = cur->right;
+		BVH* leftBvh = cur->left.get();
+		BVH* rightBvh = cur->right.get();
 		//std::cout << "rightBvh->triangleIndex: " << rightBvh << std::endl;
-		if (leftBvh != nullptr) {
-			if (leftBvh->triangleIndex == -1) {
-				if (intersectAABB(ray, leftBvh->boundingBox))
-					queue.push(leftBvh);
-			}
-			else {
-				//std::cout << "left triangleIndex: " << leftBvh->triangleIndex << std::endl;
-				intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex);
-			}
+		if (leftBvh->triangleIndex == -1) {
+			if (intersectAABB(ray, leftBvh->boundingBox))
+				queue.push(leftBvh);
+		}
+		else {
+			//std::cout << "left triangleIndex: " << leftBvh->triangleIndex << std::endl;
+			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex);
 		}
 
-		if (rightBvh != nullptr) {
-			if (rightBvh->triangleIndex == -1) {
-				if (intersectAABB(ray, rightBvh->boundingBox))
-					queue.push(rightBvh);
-			}
-			else {
-				//std::cout << "right triangleIndex: " << rightBvh->triangleIndex << std::endl;
-				intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex);
-			}
+		if (rightBvh->triangleIndex == -1) {
+			if (intersectAABB(ray, rightBvh->boundingBox))
+				queue.push(rightBvh);
+		}
+		else {
+			//std::cout << "right triangleIndex: " << rightBvh->triangleIndex << std::endl;
+			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex);
 		}
 
 	}

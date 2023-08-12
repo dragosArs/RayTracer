@@ -28,7 +28,7 @@ struct Scene {
     std::vector<Material> materials;
     std::vector<Vertex> vertices;
     std::vector<Triangle> triangles;
-    BVH* bvh;
+    std::unique_ptr<BVH> bvh;
     //std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lightSources;
     std::vector<PointLight> lightSources;
 };
@@ -62,4 +62,4 @@ struct std::hash<Key> {
 void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene);
 void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes, std::vector<Triangle>& triangles, std::vector<Vertex>& vertices);
 uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::vector<Vertex>& vertices, std::unordered_map<Key, int>& uniqueIndexKeys);
-BVH* prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangles, int left, int right, int level);
+std::unique_ptr<BVH> prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangles, int left, int right, int level);

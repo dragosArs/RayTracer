@@ -1,5 +1,6 @@
 #include "Calculation_utility.h"
 #include <iostream>
+#include <immintrin.h>
 
 /*
 void intersectSphere(Ray& ray, const Sphere& sphere, BasicHitInfo& hitInfo) {
@@ -62,22 +63,37 @@ bool intersectSphere(const Ray& ray, const Sphere& sphere) {
     return P1 >= 0.0f || P2 >= 0.0f;
 }
 */
+/*
+bool intersectAABB(const Ray& ray, const AABB& box) {
+    __m128 origin = _mm_set_ps(ray.origin.z, ray.origin.y, ray.origin.x, 0.0f);
+    __m128 invDirection = _mm_set_ps(ray.invDirection.z, ray.invDirection.y, ray.invDirection.x, 0.0f);
+    __m128 lower = _mm_set_ps(box.lower.z, box.lower.y, box.lower.x, 0.0f);
+    __m128 upper = _mm_set_ps(box.upper.z, box.upper.y, box.upper.x, 0.0f);
+
+    __m128 tMin = _mm_mul_ps(_mm_sub_ps(lower, origin), invDirection);
+    __m128 tMax = _mm_mul_ps(_mm_sub_ps(upper, origin), invDirection);
+
+    __m128 t1 = _mm_min_ps(tMin, tMax);
+    __m128 t2 = _mm_max_ps(tMin, tMax);
+
+    float tNear = std::max(std::max(t1.m128_f32[0], t1.m128_f32[1]), t1.m128_f32[2]);
+    float tFar = std::min(std::min(t2.m128_f32[0], t2.m128_f32[1]), t2.m128_f32[2]);
+
+    return tFar >= tNear && tFar >= 0;
+}
+*/
+
 
 bool intersectAABB(const Ray& ray, const AABB& box) {
-    double tx1 = (box.lower.x - ray.origin.x) * ray.invDirection.x;
-    
-    double tx2 = (box.upper.x - ray.origin.x) * ray.invDirection.x;
+    glm::vec3 tMin = (box.lower - ray.origin) * ray.invDirection;
+    glm::vec3 tMax = (box.upper - ray.origin) * ray.invDirection;
+    glm::vec3 t1 = glm::min(tMin, tMax);
+    glm::vec3 t2 = glm::max(tMin, tMax);
 
-    double tmin = std::min(tx1, tx2);
-    double tmax = std::max(tx1, tx2);
+    float tNear = glm::max(glm::max(t1.x, t1.y), t1.z);
+    float tFar = glm::min(glm::min(t2.x, t2.y), t2.z);
 
-    double ty1 = (box.lower.y - ray.origin.y) * ray.invDirection.y;
-    double ty2 = (box.upper.y - ray.origin.y) * ray.invDirection.y;
-
-    tmin = std::max(tmin, std::min(ty1, ty2));
-    tmax = std::min(tmax, std::max(ty1, ty2));
-
-    return tmax >= tmin && tmax >= 0;
+    return tFar >= tNear && tFar >= 0;
 }
 
 void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId) {

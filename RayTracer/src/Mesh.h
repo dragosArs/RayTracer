@@ -1,51 +1,37 @@
 #pragma once
-//#include "image.h"
-// Suppress warnings in third-party code.
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
-#include <filesystem>
-#include <optional>
-#include <span>
+#include <glm/glm.hpp>
 #include <vector>
+#include <iostream>
+
+struct AABB {
+    glm::vec3 lower;
+    glm::vec3 upper;
+};
 
 struct Vertex {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec2 texCoord; // Texture coordinate
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec2 texCoord;
+
+    friend std::ostream& operator<<(std::ostream& os, const Vertex& v);
 };
 
-/*
+
+struct Triangle {
+    uint32_t vertexIndex0;
+    uint32_t vertexIndex1;
+    uint32_t vertexIndex2;
+    uint32_t materialIndex;
+    glm::vec3 centroid;
+};
+
 struct Material {
-	glm::vec3 kd; // Diffuse color.
-	glm::vec3 ks{ 0.0f };
-	float shininess{ 1.0f };
-	float transparency{ 1.0f };
-};
-*/
+    glm::vec3 kd; // Diffuse color.
+    glm::vec3 ks{ 0.0f };
+    float shininess{ 20.0f };
+    float transparency{ 1.0f };
 
-struct Material
-{
-	glm::vec3 Albedo{ 1.0f };
-	float Roughness = 1.0f;
-	float Metallic = 0.0f;
-	glm::vec3 EmissionColor{ 0.0f };
-	float EmissionPower = 0.0f;
-
-	glm::vec3 GetEmission() const { return EmissionColor * EmissionPower; }
-	// Optional texture that replaces kd; use as follows:
-	// 
-	// if (material.kdTexture) {
-	//   material.kdTexture->getTexel(...);
-	// }
-	//std::optional<Image> kdTexture;
+    friend std::ostream& operator<<(std::ostream& os, const Material& v);
 };
 
-struct Mesh {
-	// Vertices contain the vertex positions and normals of the mesh.
-	std::vector<Vertex> vertices;
-	// A triangle contains a triplet of values corresponding to the indices of the 3 vertices in the vertices array.
-	std::vector<glm::uvec3> triangles;
-	Material material;
-};
-
-[[nodiscard]] std::vector<Mesh> loadMesh(const std::filesystem::path& file, bool normalize = false, bool postProcess = true);
+glm::vec3 getTriangleCentroid(glm::vec3 pos1, glm::vec3 pos2, glm::vec3 pos3);

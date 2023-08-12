@@ -1,3 +1,11 @@
 #pragma once
+#include "Scene.h"
+#include "Ray.h"
 
-Plane trianglePlane(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2);
+//void intersectSphere(Ray& ray, const Sphere& sphere, BasicHitInfo& hitInfo);
+//bool intersectSphere(const Ray& ray, const Sphere& sphere);//for shadow rays
+
+bool intersectAABB(const Ray& ray,const AABB& aabb);
+
+void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangle);
+bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triangleId);

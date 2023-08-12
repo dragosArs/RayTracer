@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include "Ray.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -11,20 +12,25 @@ using namespace Walnut;
 Camera::Camera(float verticalFOV, float nearClip, float farClip)
 	: m_VerticalFOV(verticalFOV), m_NearClip(nearClip), m_FarClip(farClip)
 {
+	//IMPORTANT: Tweak camera variables here
 	m_ForwardDirection = glm::vec3(0, 0, -1);
-	m_Position = glm::vec3(0, 0, 6);
+	m_Position = glm::vec3(0, 0, 30.0f);
+	xDebug = 0;
+	yDebug = 0;
 }
 
-bool Camera::OnUpdate(float ts)
+void Camera::OnUpdate(float ts)
 {
 	glm::vec2 mousePos = Input::GetMousePosition();
 	glm::vec2 delta = (mousePos - m_LastMousePosition) * 0.002f;
+	//debug specific points
+
 	m_LastMousePosition = mousePos;
 
 	if (!Input::IsMouseButtonDown(MouseButton::Right))
 	{
 		Input::SetCursorMode(CursorMode::Normal);
-		return false;
+		return;
 	}
 
 	Input::SetCursorMode(CursorMode::Locked);
@@ -68,6 +74,14 @@ bool Camera::OnUpdate(float ts)
 		moved = true;
 	}
 
+	//used for debugging specific pixel that mouse points at
+	if (Input::IsKeyDown(KeyCode::R))
+	{
+		//get the position of the mouse in world space
+		xDebug = (uint32_t) Input::GetMousePosition().x;
+		yDebug = (uint32_t) Input::GetMousePosition().y;
+	}
+
 	// Rotation
 	if (delta.x != 0.0f || delta.y != 0.0f)
 	{
@@ -86,8 +100,6 @@ bool Camera::OnUpdate(float ts)
 		RecalculateView();
 		RecalculateRayDirections();
 	}
-
-	return moved;
 }
 
 void Camera::OnResize(uint32_t width, uint32_t height)

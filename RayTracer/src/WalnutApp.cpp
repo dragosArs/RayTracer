@@ -8,6 +8,7 @@
 #include "Camera.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include "rapidobj.hpp"
 
 using namespace Walnut;
 
@@ -17,49 +18,64 @@ public:
 	ExampleLayer()
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
-		Material pinkSphere;
-		pinkSphere.Albedo = { 1.0f, 0.0f, 1.0f };
-		pinkSphere.Roughness = 0.0f;
 
-		Material blueSphere;
-		blueSphere.Albedo = { 0.2f, 0.3f, 1.0f };
-		blueSphere.Roughness = 0.1f;
-
-		Material orangeSphere;
-		orangeSphere.Albedo = { 0.8f, 0.5f, 0.2f };
-		orangeSphere.Roughness = 0.1f;
-		orangeSphere.EmissionColor = orangeSphere.Albedo;
-		orangeSphere.EmissionPower = 2.0f;
-
+		//loadScene("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl", m_Scene);
+		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
+		
 		{
-			Sphere sphere;
-			sphere.center = { 0.0f, 0.0f, 0.0f };
-			sphere.radius = 1.0f;
-			sphere.material = orangeSphere;
-			m_Scene.objects.push_back(sphere);
+			PointLight pointLight;
+			pointLight.position = { 0.0f, 35.0f, 0.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
 		}
 
 		{
-			Sphere sphere;
-			sphere.center = { 2.0f, 0.0f, 0.0f };
-			sphere.radius = 1.0f;
-			sphere.material = blueSphere;
-			m_Scene.objects.push_back(sphere);
+			PointLight pointLight;
+			pointLight.position = { 2.0f, 5.0f, 20.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
 		}
 
 		{
-			Sphere sphere;
-			sphere.center = { 0.0f, -101.0f, 0.0f };
-			sphere.radius = 100.0f;
-			sphere.material = pinkSphere;
-			m_Scene.objects.push_back(sphere);
+			PointLight pointLight;
+			pointLight.position = { 0.0f, 25.0f, -21.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
 		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { -22.0f, -23.0f, -1.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { -2.0f, -23.0f, 3.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+		/*
+		{
+			PointLight pointLight;
+			pointLight.position = { 0.005f, 1.98f, 0.0325f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+		*/
+
+		
+
+
+
+
+
 	}
 
 	virtual void OnUpdate(float ts) override
 	{
-		if (m_Camera.OnUpdate(ts))
-			m_Renderer.ResetFrameIndex();
+		m_Camera.OnUpdate(ts);
 	}
 
 	virtual void OnUIRender() override
@@ -69,6 +85,10 @@ public:
 		if (ImGui::Button("Render"))
 		{
 			Render();
+		}
+		if (ImGui::Button("Debug"))
+		{
+			Debug();
 		}
 		ImGui::End();
 
@@ -99,6 +119,13 @@ public:
 
 		m_LastRenderTime = timer.ElapsedMillis();
 	}
+
+	void Debug()
+	{
+		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
+		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
+		m_Renderer.Debug(m_Scene, m_Camera);
+	}
 private:
 	Renderer m_Renderer;
 	Camera m_Camera;
@@ -116,15 +143,16 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	Walnut::Application* app = new Walnut::Application(spec);
 	app->PushLayer<ExampleLayer>();
 	app->SetMenubarCallback([app]()
-	{
-		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("Exit"))
+			if (ImGui::BeginMenu("File"))
 			{
-				app->Close();
+				if (ImGui::MenuItem("Exit"))
+				{
+					app->Close();
+				}
+				ImGui::EndMenu();
 			}
-			ImGui::EndMenu();
-		}
-	});
+		});
 	return app;
 }
+

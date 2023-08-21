@@ -7,6 +7,8 @@
 #include "Bvh.h"
 #include "rapidobj.hpp"
 
+const float EPSILON = 0.00001f;
+
 struct PointLight {
     glm::vec3 position;
     glm::vec3 color;
@@ -29,7 +31,6 @@ struct Scene {
     std::vector<Vertex> vertices;
     std::vector<Triangle> triangles;
     std::unique_ptr<BVH> bvh;
-    //std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lightSources;
     std::vector<PointLight> lightSources;
 };
 

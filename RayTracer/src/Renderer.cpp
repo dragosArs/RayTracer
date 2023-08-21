@@ -100,30 +100,37 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	BasicHitInfo basicHitInfo;
-	int bounces = 1;
-	for (int i = 0; i < bounces; i++) {
+	int bounces = 2;
+	for (int i = 0; i < bounces; i++)
+	{
 		//"reset" ray
 		ray.t = -1.0f;
-		
 		traceRay(ray, basicHitInfo);
-		
-		if (ray.t > 0.0f) {
-			const FullHitInfo fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
-			if (i >= 1) 
-				reflectiveContribution = fullHitInfo.material.ks * reflectiveContribution;
+		FullHitInfo fullHitInfo;
+		if (ray.t > EPSILON )
+		{
+			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
 			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
-			ray.origin =  fullHitInfo.position + 0.0000001f * ray.direction;
+			ray.origin =  fullHitInfo.position + EPSILON * ray.direction;
+			ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
 
-			for (const PointLight& pointLight : m_activeScene->lightSources) {
+			for (const PointLight& pointLight : m_activeScene->lightSources)
+			{
+				float length = 0.999999f * glm::length(pointLight.position - fullHitInfo.position);
 				shadowRay.direction = glm::normalize(pointLight.position - fullHitInfo.position);
-				shadowRay.origin = fullHitInfo.position + 0.000001f * shadowRay.direction;
-				//reflective component should contribute proportionally to the specular component of the material it reflects off of
-				//if (!isInShadow(shadowRay))
+				shadowRay.origin = fullHitInfo.position + EPSILON * shadowRay.direction;
+				shadowRay.invDirection = glm::vec3{ 1.0f } / shadowRay.direction;
+				if (!isInShadow(shadowRay, length))
 					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
 			}
+			
+			//if (fullHitInfo.material.ks != glm::vec3{0.0f})
+				reflectiveContribution = fullHitInfo.material.ks * reflectiveContribution;
+			//else
+				//break;
 		}
 		else
-			i = bounces;	
+			i = bounces;
 	}
 	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
 	return finalColor;
@@ -132,44 +139,60 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 //This function doesn't return anything, but changes ray.t and hitInfo
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 {
-
 	std::queue<BVH*> queue;
 	queue.push(m_activeScene->bvh.get());
+
 	while (queue.size() > 0) {
 		BVH* cur = queue.front();
 		queue.pop();
 		BVH* leftBvh = cur->left.get();
 		BVH* rightBvh = cur->right.get();
-		//std::cout << "rightBvh->triangleIndex: " << rightBvh << std::endl;
-		if (leftBvh->triangleIndex == -1) {
+
+		if (leftBvh->triangleIndex == -1)
+		{
 			if (intersectAABB(ray, leftBvh->boundingBox))
 				queue.push(leftBvh);
 		}
-		else {
-			//std::cout << "left triangleIndex: " << leftBvh->triangleIndex << std::endl;
+		else
 			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex);
-		}
+		
 
-		if (rightBvh->triangleIndex == -1) {
+		if (rightBvh->triangleIndex == -1)
+		{
 			if (intersectAABB(ray, rightBvh->boundingBox))
 				queue.push(rightBvh);
 		}
-		else {
-			//std::cout << "right triangleIndex: " << rightBvh->triangleIndex << std::endl;
+		else
 			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex);
-		}
-
 	}
-	//intersectTriangle(ray, hitInfo, *m_activeScene, i);
-	
 }
 
 
-bool Renderer::isInShadow(const Ray& ray) {
+bool Renderer::isInShadow(const Ray& ray, float length) 
+{
+	std::queue<BVH*> queue;
+	queue.push(m_activeScene->bvh.get());
 
-	for (std::size_t i = 0; i < m_activeScene->triangles.size(); i++)
-	{
-		if(intersectTriangle(ray, *m_activeScene, i))
+	while (queue.size() > 0) {
+		BVH* cur = queue.front();
+		queue.pop();
+		BVH* leftBvh = cur->left.get();
+		BVH* rightBvh = cur->right.get();
+
+		if (leftBvh->triangleIndex == -1)
+		{
+			if (intersectAABB(ray, leftBvh->boundingBox))
+				queue.push(leftBvh);
+		}
+		else if (intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length))
+			return true;
+
+		if (rightBvh->triangleIndex == -1)
+		{
+			if (intersectAABB(ray, rightBvh->boundingBox))
+				queue.push(rightBvh);
+		}
+		else if (intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length))
 			return true;
 	}
 
@@ -184,7 +207,6 @@ FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo
 	float u = basicHitInfo.barU;
 	float v = basicHitInfo.barV;
 	glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
-	//glm::vec3 normal = u * v0.normal + v * v1.normal + (1 - u - v) * v2.normal;
 	glm::vec3 normal = (1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal;
 	return FullHitInfo{ hitPos, normal, scene->materials[triangle.materialIndex] };
 }

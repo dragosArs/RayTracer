@@ -29,7 +29,7 @@ private:
 
 	glm::vec3 perPixel(uint32_t x, uint32_t y, bool debug); // RayGen
 	void traceRay(Ray& ray, BasicHitInfo& hitInfo);
-	bool isInShadow(const Ray& ray);
+	bool isInShadow(const Ray& ray, float length);
 	FullHitInfo retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray);
 
 private:

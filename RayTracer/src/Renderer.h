@@ -9,6 +9,29 @@
 #include <memory>
 #include <glm/glm.hpp>
 
+
+struct Coord {
+	int x;
+	int y;
+	/*
+	bool operator==(const Key& other) const {
+		return (posIndex == other.posIndex && normIndex == other.normIndex && texIndex == other.texIndex);
+	}
+	*/
+};
+
+inline bool operator==(const Coord& lhs, const Coord& rhs) {
+	return (lhs.x == rhs.x) && (lhs.y == rhs.y);
+}
+
+template <>
+struct std::hash<Coord> {
+	std::size_t operator()(const Coord& ti) const {
+		// Combine the hash of the three integers using a simple hash function
+		return std::hash<int>()(ti.x) ^ (std::hash<int>()(ti.y) << 1);
+	}
+};
+
 class Renderer
 {
 public:
@@ -20,16 +43,17 @@ public:
 	Renderer() = default;
 
 	void OnResize(uint32_t width, uint32_t height);
-	void Render(const Scene& scene, const Camera& camera);
+	void Render(const Scene& scene, const Camera& camera, bool rayTraceMode, bool debugOverlayMode);
 	void Debug(const Scene& scene, const Camera& camera);
+	void RasterizeLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color, std::unordered_map<Coord, float>& zBuffer);
 
 	std::shared_ptr<Walnut::Image> GetFinalImage() const { return m_finalImage; }
 	Settings& GetSettings() { return m_settings; }
 private:
 
 	glm::vec3 perPixel(uint32_t x, uint32_t y, bool debug); // RayGen
-	void traceRay(Ray& ray, BasicHitInfo& hitInfo);
-	bool isInShadow(const Ray& ray, float length);
+	void traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug);
+	bool isInShadow(const Ray& ray, float length, bool debug);
 	FullHitInfo retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray);
 
 private:

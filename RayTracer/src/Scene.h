@@ -7,7 +7,7 @@
 #include "Bvh.h"
 #include "rapidobj.hpp"
 
-const float EPSILON = 0.00001f;
+const float EPSILON = 0.0001f;
 
 struct PointLight {
     glm::vec3 position;

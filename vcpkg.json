@@ -1,0 +1,11 @@
+{
+    "name": "raytracer",
+    "version-string": "1.0",
+    "dependencies": [
+      {
+        "name": "glew",
+        "version>=": "2.2.0"
+      }
+    ]
+  }
+  

@@ -13,8 +13,8 @@ Camera::Camera(float verticalFOV, float nearClip, float farClip)
 	: m_VerticalFOV(verticalFOV), m_NearClip(nearClip), m_FarClip(farClip)
 {
 	//IMPORTANT: Tweak camera variables here
-	m_ForwardDirection = glm::vec3(0, 0, -1.0f);
-	m_Position = glm::vec3(0, 1, 70.0f);
+	m_ForwardDirection = glm::vec3(0, 0, 1.0f);
+	m_Position = glm::vec3(0.0f, 0.0f, -3.0f);
 	xDebug = 0;
 	yDebug = 0;
 }
@@ -131,6 +131,7 @@ void Camera::RecalculateView()
 	m_InverseView = glm::inverse(m_View);
 }
 
+
 void Camera::RecalculateRayDirections()
 {
 	m_RayDirections.resize(m_ViewportWidth * m_ViewportHeight);
@@ -148,3 +149,12 @@ void Camera::RecalculateRayDirections()
 		}
 	}
 }
+
+const std::pair<glm::vec3, glm::vec3> Camera::ProjectLineOnScreen(std::pair<glm::vec3, glm::vec3> line) const
+{
+	glm::vec4 viewport = glm::vec4(0, 0, m_ViewportWidth, m_ViewportHeight);
+	return std::make_pair(
+		glm::project(line.first, GetView(), GetProjection(), viewport),
+		glm::project(line.second, GetView(), GetProjection(), viewport)
+	);
+};

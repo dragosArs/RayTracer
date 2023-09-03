@@ -1,3 +1,6 @@
+
+
+
 #include "Walnut/Application.h"
 #include "Walnut/EntryPoint.h"
 
@@ -10,6 +13,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "rapidobj.hpp"
 
+
 using namespace Walnut;
 
 class ExampleLayer : public Walnut::Layer
@@ -19,7 +23,7 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 
-#define SCENE 1
+#define SCENE 0
 #if SCENE
 		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
 		{
@@ -32,6 +36,13 @@ public:
 		{
 			PointLight pointLight;
 			pointLight.position = { -3.0f, 5.0f, 20.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { 0.0f, -20.0f, 0.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
@@ -59,10 +70,8 @@ public:
 	{
 		ImGui::Begin("Settings");
 		ImGui::Text("Last render: %.3fms", m_LastRenderTime);
-		if (ImGui::Button("Render"))
-		{
-			Render();
-		}
+		ImGui::Checkbox("Real time ray trace", &rayTraceMode);
+		ImGui::Checkbox("Debug overlay", &debugOverlayMode);
 		if (ImGui::Button("Debug"))
 		{
 			Debug();
@@ -92,8 +101,7 @@ public:
 
 		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
-		m_Renderer.Render(m_Scene, m_Camera);
-
+		m_Renderer.Render(m_Scene, m_Camera, rayTraceMode, debugOverlayMode);
 		m_LastRenderTime = timer.ElapsedMillis();
 	}
 
@@ -103,11 +111,15 @@ public:
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Renderer.Debug(m_Scene, m_Camera);
 	}
+
 private:
 	Renderer m_Renderer;
 	Camera m_Camera;
 	Scene m_Scene;
 	uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
+	bool rayTraceMode = false;
+	bool debugOverlayMode = true;
+	bool drawBvh = false;
 
 	float m_LastRenderTime = 0.0f;
 };

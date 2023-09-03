@@ -12,15 +12,22 @@ project "RayTracer"
       "../Walnut/vendor/imgui",
       "../Walnut/vendor/glfw/include",
       "../Walnut/vendor/glm",
-
+      "../Walnut/vendor/glew/include",
       "../Walnut/Walnut/src",
 
       "%{IncludeDir.VulkanSDK}",
    }
 
+   libdirs
+   {
+      "../Walnut/vendor/glew/lib/Release/x64"
+   }
+
    links
    {
-       "Walnut"
+      "Walnut",
+      "glew32s",
+      "opengl32",
    }
 
    targetdir ("../bin/" .. outputdir .. "/%{prj.name}")

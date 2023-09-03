@@ -3,7 +3,7 @@
 #include <immintrin.h>
 
 
-bool intersectAABB(const Ray& ray, const AABB& box)
+bool intersectAABB(const Ray& ray, const AABB& box, bool debug)
 {
     glm::vec3 tMin = (box.lower - ray.origin) * ray.invDirection;
     glm::vec3 tMax = (box.upper - ray.origin) * ray.invDirection;
@@ -12,12 +12,16 @@ bool intersectAABB(const Ray& ray, const AABB& box)
 
     float tNear = glm::max(glm::max(t1.x, t1.y), t1.z);
     float tFar = glm::min(glm::min(t2.x, t2.y), t2.z);
+    if (debug) {
+        std::cout << "box lower: " << box.lower.x << ", " << box.lower.y << ", " << box.lower.z << std::endl;
+        std::cout << "box upper: " << box.upper.x << ", " << box.upper.y << ", " << box.upper.z << std::endl;
+    }
 
     return tFar >= tNear && tFar >= EPSILON;
 }
 
 
-void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId)
+void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId, bool debug)
 {
     Triangle triangle = scene.triangles[triangleId];
     glm::vec3 posVertex0 = scene.vertices[triangle.vertexIndex0].position;
@@ -47,7 +51,8 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
         return;
 
     float t = f * glm::dot(edge2, q);
-
+    if(debug)
+        std::cout << "t: " << t << std::endl;
     //The shader is called once per ray that successfuly hits an object, while the update conditon below is called every time we intersect a triangle that is closer than the current one.
     //What if there are 10 triangles that intersect the ray, while we are only interested in the closest one? We would have to update the full hit info 10 times. Better to perform the update
     //on a smaller data structure, and only update the full hit info once we know we have the closest triangle.
@@ -59,7 +64,7 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
     }
 }
 
-bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triangleId, float length)
+bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triangleId, float length, bool debug)
 {
     Triangle triangle = scene.triangles[triangleId];
     glm::vec3 posVertex0 = scene.vertices[triangle.vertexIndex0].position;
@@ -89,8 +94,8 @@ bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triang
         return false;
 
     float t = f * glm::dot(edge2, q);
-    return t > EPSILON && t < length;
-    //return t > EPSILON && t + 0.0001f < length;
+    //return t > EPSILON && t < length;
+    return t > EPSILON && t + EPSILON < length;
 }
 
 

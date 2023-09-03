@@ -18,7 +18,9 @@ public:
 	const glm::vec3& GetPosition() const { return m_Position; }
 	const glm::vec3& GetDirection() const { return m_ForwardDirection; }
 	const std::vector<glm::vec3>& GetRayDirections() const { return m_RayDirections; }
+	const std::pair<glm::vec3, glm::vec3> ProjectLineOnScreen(std::pair<glm::vec3, glm::vec3> line) const;
 
+	 
 	uint32_t xDebug = 0;
 	uint32_t yDebug = 0;
 

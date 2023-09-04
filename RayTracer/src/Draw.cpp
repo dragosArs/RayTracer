@@ -31,6 +31,7 @@ std::vector<std::pair<glm::vec3, glm::vec3>> DrawBvh(const BVH* bvh)
 std::vector<std::pair<glm::vec3, glm::vec3>> DrawMeshes(const Scene& scene)
 {
 	std::vector<std::pair<glm::vec3, glm::vec3>> toReturn;
+	
 	for (const Triangle& triangle : scene.triangles)
 	{
 		toReturn.push_back(std::pair<glm::vec3, glm::vec3> (scene.vertices[triangle.vertexIndex0].position, scene.vertices[triangle.vertexIndex1].position));

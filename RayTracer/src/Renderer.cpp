@@ -88,6 +88,18 @@ void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMod
 					});
 			});
 	}
+	else
+	{
+			std::for_each(std::execution::par, m_imageVerticalIter.begin(), m_imageVerticalIter.end(),
+				[this](uint32_t y)
+				{
+					std::for_each(std::execution::par, m_imageHorizontalIter.begin(), m_imageHorizontalIter.end(),
+					[this, y](uint32_t x)
+						{
+							m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(glm::vec3{0.0f});
+						});
+				});
+	}
 
 	if (debugOverlayMode)
 	{
@@ -95,12 +107,15 @@ void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMod
 		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawMeshes(scene))
 		{
 			std::pair<glm::vec3, glm::vec3> line2D = camera.ProjectLineOnScreen(line3D);
-			Renderer::RasterizeLine(line2D.first, line2D.second, glm::vec3{ 1.0f, 0.0f, 0.0f }, zBuffer);
+			if (line2D.first.z != -std::numeric_limits<double>::infinity() && line2D.second.z != - std::numeric_limits<double>::infinity()
+				&& line2D.first.z != std::numeric_limits<double>::infinity() && line2D.second.z != std::numeric_limits<double>::infinity())
+				Renderer::RasterizeLine(line2D.first, line2D.second, glm::vec3{ 1.0f, 0.0f, 0.0f }, zBuffer);
 		}
 		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawBvh(scene.bvh.get()))
 		{
 			std::pair<glm::vec3, glm::vec3> line2D = camera.ProjectLineOnScreen(line3D);
-			Renderer::RasterizeLine(line2D.first, line2D.second, glm::vec3{ 0.0f, 0.0f, 1.0f }, zBuffer);
+			if (line2D.first.z > 0 || line2D.second.z > 0)
+				Renderer::RasterizeLine(line2D.first, line2D.second, glm::vec3{ 0.0f, 0.0f, 1.0f }, zBuffer);
 		}
 
 	}
@@ -128,32 +143,69 @@ void Renderer::Debug(const Scene& scene, const Camera& camera)
 
 void Renderer::RasterizeLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color, std::unordered_map<Coord, float>& zBuffer)
 {
-	int aux0 = (int)start.x;
-	int aux2 = (int)end.x;
-	int auy0 = (int)start.x;
-	int auy2 = (int)end.y;
-	int x0 = glm::clamp((int)start.x, 0, (int)m_finalImage->GetWidth() - 1);
-	int x2 = glm::clamp((int)end.x, 0, (int)m_finalImage->GetWidth() - 1);
-	int y0 = glm::clamp((int)start.y, 0, (int)m_finalImage->GetHeight() - 1);
-	int y2 = glm::clamp((int)end.y, 0, (int)m_finalImage->GetHeight() - 1);
-	int x1 = x0;
-	int y1 = y0;
+	//std::cout << "start: " << start.x << " " << start.y << std::endl;
+	//std::cout << "end: " << end.x << " " << end.y << std::endl;
+	int width = m_finalImage->GetWidth() - 1;
+	int height = m_finalImage->GetHeight() - 1;
+	Coord startClamped = Coord{ -1, -1 };
+	Coord endClamped = Coord{ -1, -1};
 
-	int dx = abs(x2 - x1);
-	int dy = abs(y2 - y1);
-	int sx = (x1 < x2) ? 1 : -1;
-	int sy = (y1 < y2) ? 1 : -1;
-	int error = dx - dy;
-	float dist = glm::distance(glm::vec2(aux2, auy2), glm::vec2(aux0, auy0));
+	int dx = end.x - start.x;
+	int dy = end.y - start.y;
+	float p[4] = { -dx, dx, -dy, dy };
+	float q[4] = { start.x, width - start.x, start.y, height - start.y };
 
-	while (x1 != x2 || y1 != y2) {
-		// Process the current point (x1, y1)
-		float t = glm::distance(glm::vec2(x1, y1), glm::vec2(aux0, auy0)) / dist;
-		float depth = t * start.z + (1 - t) * end.z;
-		if (zBuffer.count(Coord{ x1, y1 }) == 0 || depth < zBuffer[Coord{x1, y1}])
+	float t1 = 0.0f;
+	float t2 = 1.0f;
+
+	for (int i = 0; i < 4; i++)
+	{
+		if (p[i] == 0.0f && q[i] < 0.0f)
+			return;
+		if (p[i] < 0.0f)
 		{
-			zBuffer[Coord{ x1, y1 }] = depth;
-			m_imageData[x1 + y1 * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
+			float t = (q[i]) / (p[i]);  // This calculation was returning a zero because both q and p were int
+			if (t > t1 && t < t2)
+			{
+				t1 = t;
+			}
+		}
+		else if (p[i] > 0.0f)
+		{
+			float t = (q[i]) / (p[i]);  // This calculation was returning a zero because both q and p were int
+			if (t > t1 && t < t2)
+			{
+				t2 = t;
+			}
+		}
+	}
+
+	if (t1 < t2) {
+		startClamped = Coord{ (int)(start.x + t1 * dx), (int)(start.y + t1 * dy) };
+		endClamped = Coord{ (int)(start.x + t2 * dx), (int)(start.y + t2 * dy) };
+	}
+	else
+		return;
+
+	//std::cout << "startClamped: " << startClamped.x << " " << startClamped.y << std::endl;
+	//std::cout << "endClamped: " << endClamped.x << " " << endClamped.y << std::endl << std::endl;
+	dx = abs(endClamped.x - startClamped.x);
+	dy = abs(endClamped.y - startClamped.y);
+	int sx = (startClamped.x < endClamped.x) ? 1 : -1;
+	int sy = (startClamped.y < endClamped.y) ? 1 : -1;
+	int error = dx - dy;
+	float dist = glm::distance(glm::vec2(start.x, start.y), glm::vec2(end.x, end.y));
+	int x = startClamped.x;
+	int y = startClamped.y;
+
+	while (x != endClamped.x || y != endClamped.y) {
+		// Process the current point (x1, y1)
+		float t = glm::distance(glm::vec2(x, y), glm::vec2(startClamped.x, startClamped.y)) / dist;
+		float depth = t * start.z + (1 - t) * end.z;
+		if (x > 0 && x < width && y > 0 && y < height && (zBuffer.count(Coord{ x, y }) == 0 || depth < zBuffer[Coord{x, y}]))
+		{
+			zBuffer[Coord{ x, y }] = depth;
+			m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
 		}
 
 		int error2 = 2 * error;
@@ -162,23 +214,23 @@ void Renderer::RasterizeLine(const glm::vec3& start, const glm::vec3& end, const
 		// to move vertically.
 		if (error2 > -dy) {
 			error -= dy;
-			x1 += sx;
+			x += sx;
 		}
 
 		// If the error is less than dx, it's time to move horizontally.
 		if (error2 < dx) {
 			error += dx;
-			y1 += sy;
+			y += sy;
 		}
 	}
 
 	// Process the final point (x2, y2)
-	float t = glm::distance(glm::vec2(x1, y1), glm::vec2(aux0, auy0)) / dist;
+	float t = glm::distance(glm::vec2(x, y), glm::vec2(start.x, start.y)) / dist;
 	float depth = t * start.z + (1 - t) * end.z;
-	if (zBuffer.count(Coord{ x1, y1 }) == 0 || depth < zBuffer[Coord{ x1, y1 }])
+	if (x > 0 && x < width && y > 0 && y < height && (zBuffer.count(Coord{ x, y }) == 0 || depth < zBuffer[Coord{ x, y }]))
 	{
-		zBuffer[Coord{ x1, y1 }] = depth;
-		m_imageData[x1 + y1 * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
+		zBuffer[Coord{ x, y }] = depth;
+		m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
 	}
 	
 	//std::cout << start.x << " " << start.y << " " << end.x << " " << end.y << std::endl;
@@ -310,4 +362,6 @@ FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo
 	glm::vec3 normal = (1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal;
 	return FullHitInfo{ hitPos, normal, scene->materials[triangle.materialIndex] };
 }
+
+
 

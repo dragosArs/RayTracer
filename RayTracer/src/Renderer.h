@@ -43,7 +43,7 @@ public:
 	Renderer() = default;
 
 	void OnResize(uint32_t width, uint32_t height);
-	void Render(const Scene& scene, const Camera& camera, bool rayTraceMode, bool debugOverlayMode);
+	void Render(const Scene& scene, const Camera& camera, bool rayTraceMode, bool debugTrianglesOverlayMode, bool debugBvhOverlayMode);
 	void Debug(const Scene& scene, const Camera& camera);
 	void RasterizeLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color, std::unordered_map<Coord, float>& zBuffer);
 
@@ -53,7 +53,7 @@ private:
 
 	glm::vec3 perPixel(uint32_t x, uint32_t y, bool debug); // RayGen
 	void traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug);
-	bool isInShadow(const Ray& ray, float length, bool debug);
+	bool isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex);
 	FullHitInfo retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray);
 
 private:

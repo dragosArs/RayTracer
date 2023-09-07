@@ -12,10 +12,6 @@ bool intersectAABB(const Ray& ray, const AABB& box, bool debug)
 
     float tNear = glm::max(glm::max(t1.x, t1.y), t1.z);
     float tFar = glm::min(glm::min(t2.x, t2.y), t2.z);
-    if (debug) {
-        std::cout << "box lower: " << box.lower.x << ", " << box.lower.y << ", " << box.lower.z << std::endl;
-        std::cout << "box upper: " << box.upper.x << ", " << box.upper.y << ", " << box.upper.z << std::endl;
-    }
 
     return tFar >= tNear && tFar >= EPSILON;
 }
@@ -64,6 +60,7 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
     }
 }
 
+//This is specifically used for shadows, where we only need to know if there is an intersection, and not the exact point of intersection.
 bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triangleId, float length, bool debug)
 {
     Triangle triangle = scene.triangles[triangleId];
@@ -94,8 +91,17 @@ bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triang
         return false;
 
     float t = f * glm::dot(edge2, q);
-    //return t > EPSILON && t < length;
-    return t > EPSILON && t + EPSILON < length;
+    //return t > EPSILON && t + EPSILON < length;
+    
+    if (t > EPSILON && t + EPSILON < length) {
+        glm::vec3 normal = glm::normalize((1 - u - v) * scene.vertices[triangle.vertexIndex0].normal +
+            u * scene.vertices[triangle.vertexIndex1].normal + v * scene.vertices[triangle.vertexIndex2].normal);
+        return glm::dot(ray.direction, normal) > 0;
+    }
+    
+    return false;
+    
 }
+    
 
 

@@ -14,6 +14,8 @@
 #include <queue>
 #include <glm/gtc/type_ptr.hpp>
 
+std::mutex coutMutex;
+
 namespace Utils {
 
 	static uint32_t ConvertToRGBA(const glm::vec3& color)
@@ -57,7 +59,7 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 }
 
 
-void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMode, bool debugOverlayMode)
+void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMode, bool debugTrianglesOverlayMode, bool debugBvhOverlayMode)
 {
 	m_activeScene = &scene;
 	m_activeCamera = &camera;
@@ -100,10 +102,9 @@ void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMod
 						});
 				});
 	}
-
-	if (debugOverlayMode)
-	{
-		std::unordered_map<Coord, float> zBuffer;
+	std::unordered_map<Coord, float> zBuffer;
+	if (debugTrianglesOverlayMode)
+	{		
 		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawMeshes(scene))
 		{
 			std::pair<glm::vec3, glm::vec3> line2D = camera.ProjectLineOnScreen(line3D);
@@ -111,13 +112,16 @@ void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMod
 				&& line2D.first.z != std::numeric_limits<double>::infinity() && line2D.second.z != std::numeric_limits<double>::infinity())
 				Renderer::RasterizeLine(line2D.first, line2D.second, glm::vec3{ 1.0f, 0.0f, 0.0f }, zBuffer);
 		}
+	}
+	if (debugBvhOverlayMode)
+	{
 		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawBvh(scene.bvh.get()))
 		{
 			std::pair<glm::vec3, glm::vec3> line2D = camera.ProjectLineOnScreen(line3D);
-			if (line2D.first.z > 0 || line2D.second.z > 0)
+			if (line2D.first.z != -std::numeric_limits<double>::infinity() && line2D.second.z != -std::numeric_limits<double>::infinity()
+				&& line2D.first.z != std::numeric_limits<double>::infinity() && line2D.second.z != std::numeric_limits<double>::infinity())
 				Renderer::RasterizeLine(line2D.first, line2D.second, glm::vec3{ 0.0f, 0.0f, 1.0f }, zBuffer);
 		}
-
 	}
 	
 
@@ -248,7 +252,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	glm::vec3 color = glm::vec3{ 0.1f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	BasicHitInfo basicHitInfo;
-	int bounces = 2;
+	int bounces = 3;
 	for (int i = 0; i < bounces; i++)
 	{
 		//"reset" ray
@@ -266,11 +270,18 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 
 			for (const PointLight& pointLight : m_activeScene->lightSources)
 			{
-				float length = 0.99f * glm::length(pointLight.position - fullHitInfo.position);
-				shadowRay.direction = glm::normalize(pointLight.position - fullHitInfo.position);
-				shadowRay.origin = fullHitInfo.position + EPSILON * shadowRay.direction;
-				shadowRay.invDirection = glm::vec3{ 1.0f } / shadowRay.direction;
-				if (!isInShadow(shadowRay, length, debug))
+				
+				
+				shadowRay.origin = fullHitInfo.position + 0.075f * fullHitInfo.normal + 100 * EPSILON * shadowRay.direction;
+				float length = glm::length(pointLight.position - shadowRay.origin);
+				shadowRay.direction = glm::normalize(pointLight.position - shadowRay.origin);
+				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
+				//If Epsilon is small teapot is rendered well, but cornell box is not
+				//If Epsilon is big teapot is not rendered well, but cornell box is
+				//Wtf
+				//How do I solve self intersection problem?
+				//Maybe keep track of the last hit object and if it's the same as the current one, ignore it?
+				if (!isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
 					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
 			}
 			
@@ -290,23 +301,26 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 //This function doesn't return anything, but changes ray.t and hitInfo
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 {
-	std::queue<BVH*> queue;
+	std::queue<const BVH*> queue;
 	queue.push(m_activeScene->bvh.get());
 
 	while (queue.size() > 0) 
 	{
-		BVH* cur = queue.front();
+		const BVH* cur = queue.front();
 		queue.pop();
-		BVH* leftBvh = cur->left.get();
-		BVH* rightBvh = cur->right.get();
+		const BVH* leftBvh = cur->left.get();
+		const BVH* rightBvh = cur->right.get();
 
 		if (leftBvh->triangleIndex == -1)
 		{
 			if (intersectAABB(ray, leftBvh->boundingBox, debug))
 				queue.push(leftBvh);
 		}
-		else
+		else {
 			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
+			if(debug)
+				std::cout << ray.t << std::endl;
+		}
 		
 
 		if (rightBvh->triangleIndex == -1)
@@ -314,38 +328,49 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 			if (intersectAABB(ray, rightBvh->boundingBox, debug))
 				queue.push(rightBvh);
 		}
-		else
+		else {
 			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
+			if(debug)
+				std::cout << ray.t << std::endl;
+		}
 	}
 }
 
 
-bool Renderer::isInShadow(const Ray& ray, float length, bool debug) 
+bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex) 
 {
-	std::queue<BVH*> queue;
+	std::queue<const BVH*> queue;
 	queue.push(m_activeScene->bvh.get());
 
 	while (queue.size() > 0) {
-		BVH* cur = queue.front();
+		const BVH* cur = queue.front();
 		queue.pop();
-		BVH* leftBvh = cur->left.get();
-		BVH* rightBvh = cur->right.get();
+		const BVH* leftBvh = cur->left.get();
+		const BVH* rightBvh = cur->right.get();
 
 		if (leftBvh->triangleIndex == -1)
 		{
 			if (intersectAABB(ray, leftBvh->boundingBox, debug))
 				queue.push(leftBvh);
 		}
-		else if (intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length, debug))
+		else if (leftBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length, debug))
+		{
+			//std::lock_guard<std::mutex> lock(coutMutex);
+			//std::cout << "Current triangle index: " << leftBvh->triangleIndex << ", Original triangle index: " << originalTriangleIndex << std::endl;
 			return true;
+		}
 
 		if (rightBvh->triangleIndex == -1)
 		{
 			if (intersectAABB(ray, rightBvh->boundingBox, debug))
 				queue.push(rightBvh);
 		}
-		else if (intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length, debug))
+		else if (rightBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length, debug))
+		{
+			//std::lock_guard<std::mutex> lock(coutMutex);
+			//std::cout << "Current triangle index: " << rightBvh->triangleIndex << ", Original triangle index: " << originalTriangleIndex << std::endl;
 			return true;
+		}
 	}
 
 	return false;
@@ -359,7 +384,7 @@ FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo
 	float u = basicHitInfo.barU;
 	float v = basicHitInfo.barV;
 	glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
-	glm::vec3 normal = (1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal;
+	glm::vec3 normal = glm::normalize((1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal);
 	return FullHitInfo{ hitPos, normal, scene->materials[triangle.materialIndex] };
 }
 

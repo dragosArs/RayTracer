@@ -23,9 +23,12 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 
-#define SCENE 0
+#define SCENE 1
 #if SCENE
 		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
+		m_Camera.SetPosition({ 30.0f, 0.0f, 0.0f });
+		m_Camera.SetDirection({ -1.0f, 0.0f, 0.0f });
+		/*
 		{
 			PointLight pointLight;
 			pointLight.position = { 0.0f, 35.0f, 0.0f };
@@ -46,8 +49,16 @@ public:
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
+		*/
+		{
+			PointLight pointLight;
+			pointLight.position = { 0.0f, 0.0f, -50.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
 #else
-		
+		m_Camera.SetPosition({ 0.0f, 0.0f, -3.0f });
+		m_Camera.SetDirection({ 0.0f, 0.0f, 1.0f });
 		loadScene("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl", m_Scene);
 		{
 			PointLight pointLight;
@@ -71,7 +82,8 @@ public:
 		ImGui::Begin("Settings");
 		ImGui::Text("Last render: %.3fms", m_LastRenderTime);
 		ImGui::Checkbox("Real time ray trace", &rayTraceMode);
-		ImGui::Checkbox("Debug overlay", &debugOverlayMode);
+		ImGui::Checkbox("Debug triangles overlay", &debugTrianglesOverlayMode);
+		ImGui::Checkbox("Debug BVH overlay", &debugBvhOverlayMode);
 		if (ImGui::Button("Debug"))
 		{
 			Debug();
@@ -101,7 +113,7 @@ public:
 
 		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
-		m_Renderer.Render(m_Scene, m_Camera, rayTraceMode, debugOverlayMode);
+		m_Renderer.Render(m_Scene, m_Camera, rayTraceMode, debugTrianglesOverlayMode, debugBvhOverlayMode);
 		m_LastRenderTime = timer.ElapsedMillis();
 	}
 
@@ -117,8 +129,9 @@ private:
 	Camera m_Camera;
 	Scene m_Scene;
 	uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
-	bool rayTraceMode = false;
-	bool debugOverlayMode = true;
+	bool rayTraceMode = true;
+	bool debugTrianglesOverlayMode = false;
+	bool debugBvhOverlayMode = false;
 	bool drawBvh = false;
 
 	float m_LastRenderTime = 0.0f;

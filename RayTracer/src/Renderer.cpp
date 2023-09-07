@@ -58,8 +58,7 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 		m_imageVerticalIter[i] = i;
 }
 
-
-void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMode, bool debugTrianglesOverlayMode, bool debugBvhOverlayMode)
+void Renderer::Render(const Scene& scene, const Camera& camera, const Settings& settings, const VisualDebugging& visDebugging)
 {
 	m_activeScene = &scene;
 	m_activeCamera = &camera;
@@ -78,7 +77,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMod
 	
 
 #else 
-	if (rayTraceMode)
+	if (settings.enableRayTracing)
 	{
 		std::for_each(std::execution::par, m_imageVerticalIter.begin(), m_imageVerticalIter.end(),
 			[this](uint32_t y)
@@ -103,7 +102,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMod
 				});
 	}
 	std::unordered_map<Coord, float> zBuffer;
-	if (debugTrianglesOverlayMode)
+	if (visDebugging.enableWireframeTriangles)
 	{		
 		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawMeshes(scene))
 		{
@@ -113,7 +112,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, bool rayTraceMod
 				Renderer::RasterizeLine(line2D.first, line2D.second, glm::vec3{ 1.0f, 0.0f, 0.0f }, zBuffer);
 		}
 	}
-	if (debugBvhOverlayMode)
+	if (visDebugging.enableWireframeBvh)
 	{
 		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawBvh(scene.bvh.get()))
 		{
@@ -270,8 +269,6 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 
 			for (const PointLight& pointLight : m_activeScene->lightSources)
 			{
-				
-				
 				shadowRay.origin = fullHitInfo.position + 0.075f * fullHitInfo.normal + 100 * EPSILON * shadowRay.direction;
 				float length = glm::length(pointLight.position - shadowRay.origin);
 				shadowRay.direction = glm::normalize(pointLight.position - shadowRay.origin);
@@ -376,6 +373,8 @@ bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t ori
 	return false;
 }
 
+//TODO
+//Apply bilinear interpolation here
 FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray) {
 	Triangle triangle = scene->triangles[basicHitInfo.triangleIndex];
 	Vertex v0 = scene->vertices[triangle.vertexIndex0];

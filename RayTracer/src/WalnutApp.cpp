@@ -82,13 +82,21 @@ public:
 	{
 		ImGui::Begin("Settings");
 		ImGui::Text("Last render: %.3fms", m_LastRenderTime);
-		ImGui::Checkbox("Real time ray trace", &rayTraceMode);
-		ImGui::Checkbox("Debug triangles overlay", &debugTrianglesOverlayMode);
-		ImGui::Checkbox("Debug BVH overlay", &debugBvhOverlayMode);
-		if (ImGui::Button("Debug"))
+		
+		ImGui::Text("Visual debugging");
+		ImGui::Checkbox("Enable wireframe of triangles", &m_Renderer.GetVisualDebugging().enableWireframeTriangles);
+		ImGui::Checkbox("Enable wireframe of BVH", &m_Renderer.GetVisualDebugging().enableWireframeBvh);
+
+		if (ImGui::Button("Debug pixel"))
 		{
 			Debug();
 		}
+
+		ImGui::Separator();
+		ImGui::Text("Settings");
+		ImGui::Checkbox("Real time ray trace", &m_Renderer.GetSettings().enableRayTracing);
+		ImGui::Checkbox("Bilinear interpolation", &m_Renderer.GetSettings().applyBilinearInterpolation);
+
 		ImGui::End();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -114,7 +122,7 @@ public:
 
 		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
-		m_Renderer.Render(m_Scene, m_Camera, rayTraceMode, debugTrianglesOverlayMode, debugBvhOverlayMode);
+		m_Renderer.Render(m_Scene, m_Camera, m_Renderer.GetSettings(), m_Renderer.GetVisualDebugging());
 		m_LastRenderTime = timer.ElapsedMillis();
 	}
 

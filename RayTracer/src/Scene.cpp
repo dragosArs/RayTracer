@@ -20,7 +20,7 @@ void loadScene(const std::filesystem::path& objectFilePath, const std::filesyste
 	for (const rapidobj::Material& material : result.materials)
 	{
 		Material myMaterial;
-		Texture texture;
+		
 		//If a texture is specified in the material file, load it and add it to the scene
 		if (material.diffuse_texname != "") {
 			//If material hasn't been found before load it and add it to the scene, otherwise just assign the already loaded texture to the material
@@ -32,16 +32,19 @@ void loadScene(const std::filesystem::path& objectFilePath, const std::filesyste
 				if(!imageData)
 					std::cout << "Failed to load texture\n";
 				else {
+					Texture texture;
 					texture.data = imageData;
 					texture.width = width;
 					texture.height = height;
 					texture.channels = channels;
 					texMap[material.diffuse_texname] = scene.textures.size();
 					scene.textures.push_back(texture);
+					myMaterial.textureIndex = scene.textures.size() - 1;
 				}	
 			}
 			else {
-				texture = scene.textures[texMap[material.diffuse_texname]];
+				myMaterial.textureIndex = texMap[material.diffuse_texname];
+
 			}	
 		}
 		myMaterial.kd = glm::vec3{ material.diffuse[0], material.diffuse[1], material.diffuse[2]};

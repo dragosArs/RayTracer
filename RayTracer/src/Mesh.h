@@ -36,6 +36,7 @@ struct Triangle
 
 struct Material
 {
+    int textureIndex = -1;
     glm::vec3 kd; // Diffuse color.
     glm::vec3 ks{ 0.0f };
     float shininess{ 50.0f };

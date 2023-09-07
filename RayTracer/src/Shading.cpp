@@ -3,6 +3,7 @@
 
 glm::vec3 phongFull(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
+
     return diffuseOnly(hitInfo, pointLight) + blinnPhongSpecularOnly(hitInfo, camera, pointLight);
 }
 

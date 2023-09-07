@@ -1028,7 +1028,7 @@ v 0.687500 0.306250 0.306249
 # 507 vertices, 0 vertices normals
 
 
-usemtl material_0
+usemtl monkey
 vt 0.890955 0.590063
 vt 0.870622 0.589649
 vt 0.860081 0.560115

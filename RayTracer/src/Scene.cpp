@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include "../../Walnut/vendor/stb_image/stb_image.h"
 
 
 
@@ -9,6 +10,7 @@ void loadScene(const std::filesystem::path& objectFilePath, const std::filesyste
 	auto materialFullFilePath = std::filesystem::current_path().string() + materialFilePath.string();
 	rapidobj::MaterialLibrary ml = rapidobj::MaterialLibrary::SearchPath(materialFullFilePath, rapidobj::Load::Mandatory);
 	rapidobj::Result result = rapidobj::ParseFile(objectFullFilePath, ml);
+	std::unordered_map<std::string, int> texMap;
 
 	if (result.error) 
 		std::cout << result.error.code.message() << '\n';
@@ -18,6 +20,30 @@ void loadScene(const std::filesystem::path& objectFilePath, const std::filesyste
 	for (const rapidobj::Material& material : result.materials)
 	{
 		Material myMaterial;
+		Texture texture;
+		//If a texture is specified in the material file, load it and add it to the scene
+		if (material.diffuse_texname != "") {
+			//If material hasn't been found before load it and add it to the scene, otherwise just assign the already loaded texture to the material
+			if (texMap.find(material.diffuse_texname) == texMap.end()) {
+				std::string filePathString = "assets\\textures\\" + material.diffuse_texname;
+				const char* filePath = filePathString.c_str();
+				int width, height, channels;
+				std::shared_ptr<unsigned char> imageData(stbi_load(filePath, &width, &height, &channels, 0), stbi_image_free);
+				if(!imageData)
+					std::cout << "Failed to load texture\n";
+				else {
+					texture.data = imageData;
+					texture.width = width;
+					texture.height = height;
+					texture.channels = channels;
+					texMap[material.diffuse_texname] = scene.textures.size();
+					scene.textures.push_back(texture);
+				}	
+			}
+			else {
+				texture = scene.textures[texMap[material.diffuse_texname]];
+			}	
+		}
 		myMaterial.kd = glm::vec3{ material.diffuse[0], material.diffuse[1], material.diffuse[2]};
 		myMaterial.ks = glm::vec3{ material.specular[0], material.specular[1], material.specular[2]};
 		myMaterial.shininess = material.shininess;
@@ -27,7 +53,7 @@ void loadScene(const std::filesystem::path& objectFilePath, const std::filesyste
 
 	for (const rapidobj::Shape& shape : result.shapes)
 		createUniqueVertices(shape.mesh, result.attributes, scene.triangles, scene.vertices);
-	
+	std::cout <<scene.textures.size() << '\n';
 	scene.bvh = prepBvh(scene.vertices, scene.triangles, 0, scene.triangles.size() - 1, 0);	
 }
 

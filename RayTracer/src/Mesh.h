@@ -44,4 +44,11 @@ struct Material
     friend std::ostream& operator<<(std::ostream& os, const Material& v);
 };
 
+struct Texture
+{
+	int width;
+	int height;
+	int channels;
+    std::shared_ptr<unsigned char> data;
+};
 glm::vec3 getTriangleCentroid(glm::vec3 pos1, glm::vec3 pos2, glm::vec3 pos3);

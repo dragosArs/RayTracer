@@ -29,6 +29,7 @@ struct ParallelogramLight {
 struct Scene {
     std::vector<Material> materials;
     std::vector<Vertex> vertices;
+    std::vector<Texture> textures;
     std::vector<Triangle> triangles;
     std::unique_ptr<BVH> bvh;
     std::vector<PointLight> lightSources;

@@ -22,10 +22,11 @@ public:
 	ExampleLayer()
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
-
+		
 #define SCENE 1
 #if SCENE
 		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
+		
 		m_Camera.SetPosition({ 30.0f, 0.0f, 0.0f });
 		m_Camera.SetDirection({ -1.0f, 0.0f, 0.0f });
 		/*
@@ -128,6 +129,7 @@ private:
 	Renderer m_Renderer;
 	Camera m_Camera;
 	Scene m_Scene;
+
 	uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 	bool rayTraceMode = true;
 	bool debugTrianglesOverlayMode = false;

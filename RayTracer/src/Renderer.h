@@ -37,21 +37,25 @@ class Renderer
 public:
 	struct Settings
 	{
-		bool enableRayTracing = true;
 		bool Accumulate = true;
-		bool applyBilinearInterpolation = false;
+		bool enableRayTracing = true;
+		bool enableShadows = true;
+		bool applyTexture = false;
+		int bounces = 1;
 	};
 
 	struct VisualDebugging
 	{
 		bool enableWireframeTriangles = false;
 		bool enableWireframeBvh = false;
+		bool enableRaysDebugging = false;
+		std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugRays;
 	};
 public:
 	Renderer() = default;
 
 	void OnResize(uint32_t width, uint32_t height);
-	void Render(const Scene& scene, const Camera& camera, const Settings& settings, const VisualDebugging& visDebugging);
+	void Render(const Scene& scene, const Camera& camera);
 	void Debug(const Scene& scene, const Camera& camera);
 	void RasterizeLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color, std::unordered_map<Coord, float>& zBuffer);
 
@@ -61,9 +65,11 @@ public:
 private:
 
 	glm::vec3 perPixel(uint32_t x, uint32_t y, bool debug); // RayGen
+	std::vector <std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugPixel(uint32_t x, uint32_t y);
 	void traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug);
 	bool isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex);
 	FullHitInfo retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray);
+	glm::vec3 Renderer::applyBilinearInterpolation(const Vertex& vertex, const Texture& texture);
 
 private:
 	std::shared_ptr<Walnut::Image> m_finalImage;

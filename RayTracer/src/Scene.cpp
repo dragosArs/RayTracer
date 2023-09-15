@@ -24,16 +24,17 @@ void loadScene(const std::filesystem::path& objectFilePath, const std::filesyste
 		//If a texture is specified in the material file, load it and add it to the scene
 		if (material.diffuse_texname != "") {
 			//If material hasn't been found before load it and add it to the scene, otherwise just assign the already loaded texture to the material
+			std::cout << material.diffuse_texname << '\n';
 			if (texMap.find(material.diffuse_texname) == texMap.end()) {
 				std::string filePathString = "assets\\textures\\" + material.diffuse_texname;
 				const char* filePath = filePathString.c_str();
 				int width, height, channels;
-				std::shared_ptr<unsigned char> imageData(stbi_load(filePath, &width, &height, &channels, 0), stbi_image_free);
+				std::shared_ptr<stbi_uc> imageData(stbi_load(filePath, &width, &height, &channels, 0), stbi_image_free);
 				if(!imageData)
 					std::cout << "Failed to load texture\n";
 				else {
 					Texture texture;
-					texture.data = imageData;
+					texture.pixels = loadTexture(imageData, width, height, channels);
 					texture.width = width;
 					texture.height = height;
 					texture.channels = channels;
@@ -56,7 +57,7 @@ void loadScene(const std::filesystem::path& objectFilePath, const std::filesyste
 
 	for (const rapidobj::Shape& shape : result.shapes)
 		createUniqueVertices(shape.mesh, result.attributes, scene.triangles, scene.vertices);
-	std::cout <<scene.textures.size() << '\n';
+	std::cout << scene.textures.size() << '\n';
 	scene.bvh = prepBvh(scene.vertices, scene.triangles, 0, scene.triangles.size() - 1, 0);	
 }
 
@@ -135,7 +136,7 @@ std::unique_ptr<BVH> prepBvh(const std::vector<Vertex>& vertices, std::vector<Tr
 		float maxZ = std::max(leftBvh->boundingBox.upper.z, rightBvh->boundingBox.upper.z);
 		AABB mergedBox = AABB{ glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
 		
-		std::unique_ptr<BVH> bvh(new BVH{ mergedBox, -1 });
+		std::unique_ptr<BVH> bvh = std::make_unique<BVH>(BVH{ mergedBox, -1 });
 		bvh->left = std::move(leftBvh);
 		bvh->right = std::move(rightBvh);
 		return bvh;
@@ -152,8 +153,59 @@ std::unique_ptr<BVH> prepBvh(const std::vector<Vertex>& vertices, std::vector<Tr
 		float maxZ = std::max(vertices[triangle.vertexIndex0].position.z, std::max(vertices[triangle.vertexIndex1].position.z, vertices[triangle.vertexIndex2].position.z));
 
 		AABB mergedBox = AABB{ glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
-		std::unique_ptr<BVH> bvh(new BVH{ mergedBox, left });
+		std::unique_ptr<BVH> bvh = std::make_unique<BVH>(BVH{ mergedBox, left });
 		return bvh;
 	}
+}
+
+std::vector<glm::vec3> loadTexture(std::shared_ptr<unsigned char> imageData, int width, int height, int numChannels)
+{
+	std::vector<glm::vec3> pixels;
+	
+	if (numChannels == 3)
+	{
+		uint32_t size = 3 * width * height;
+		for (uint32_t i = 0; i < size; i += 3)
+		{
+			//TODO change back
+			glm::vec3 color;
+			if(imageData.get()[i] < 200)
+				color = glm::vec3{ 0.1f, 0.1f, 0.1f };
+			else
+				color = glm::vec3{ 1.0f, 1.0f, 1.0f };
+			pixels.emplace_back(color);
+			//pixels.emplace_back(imageData.get()[i] / 255.0f, imageData.get()[i + 1] / 255.0f, imageData.get()[i + 2] / 255.0f);
+		}
+	}
+	else if (numChannels == 1)
+	{
+		uint32_t size = width * height;
+		for (uint32_t i = 0; i < size; i++)
+		{
+			pixels.emplace_back(imageData.get()[i] / 255.0f, imageData.get()[i] / 255.0f, imageData.get()[i] / 255.0f);
+		}
+	}
+	else if (numChannels == 4)
+	{
+		uint32_t size = 4 * width * height;
+		for (uint32_t i = 0; i < size; i += 4)
+		{
+			pixels.emplace_back(imageData.get()[i] / 255.0f, imageData.get()[i + 1] / 255.0f, imageData.get()[i + 2] / 255.0f);
+		}
+	}
+	else if (numChannels == 2)
+	{
+		uint32_t size = 2 * width * height;
+		for (uint32_t i = 0; i < size; i += 2)
+		{
+			pixels.emplace_back(imageData.get()[i] / 255.0f, imageData.get()[i] / 255.0f, imageData.get()[i] / 255.0f);
+		}
+	}
+	else
+	{
+		std::cout << "Unsupported number of channels\n";
+	}
+	return pixels;
+
 }
 

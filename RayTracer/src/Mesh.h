@@ -50,6 +50,6 @@ struct Texture
 	int width;
 	int height;
 	int channels;
-    std::shared_ptr<unsigned char> data;
+    std::vector<glm::vec3> pixels;
 };
 glm::vec3 getTriangleCentroid(glm::vec3 pos1, glm::vec3 pos2, glm::vec3 pos3);

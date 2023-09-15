@@ -1,6 +1,3 @@
-
-
-
 #include "Walnut/Application.h"
 #include "Walnut/EntryPoint.h"
 
@@ -27,8 +24,11 @@ public:
 #if SCENE
 		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
 		
-		m_Camera.SetPosition({ 30.0f, 0.0f, 0.0f });
-		m_Camera.SetDirection({ -1.0f, 0.0f, 0.0f });
+		/*m_Camera.SetDirection({ 0.0f, 0.0f, -1.0f });
+		m_Camera.SetPosition({ 0.0f, 0.0f, 30.0f });*/
+
+		m_Camera.SetDirection({ 0.0f, 0.0f, -1.0f });
+		m_Camera.SetPosition({ 0.0f, 0.0f, 50.0f });
 		/*
 		{
 			PointLight pointLight;
@@ -53,10 +53,45 @@ public:
 		*/
 		{
 			PointLight pointLight;
-			pointLight.position = { 0.0f, 0.0f, -50.0f };
+			pointLight.position = { 0.0f, 0.0f, 30.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
+
+		/*{
+			PointLight pointLight;
+			pointLight.position = { 0.0f, 0.0f, -30.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { 0.0f, 30.0f, 0.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}*/
+
+		/*{
+			PointLight pointLight;
+			pointLight.position = { 2.0f, 3.0f, -2.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { -2.0f, 3.0f, 2.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}
+
+		{
+			PointLight pointLight;
+			pointLight.position = { -2.0f, 3.0f, -2.0f };
+			pointLight.color = { 1.0f, 1.0f, 1.0f };
+			m_Scene.lightSources.push_back(pointLight);
+		}*/
 #else
 		m_Camera.SetPosition({ 0.0f, 0.0f, -3.0f });
 		m_Camera.SetDirection({ 0.0f, 0.0f, 1.0f });
@@ -82,8 +117,11 @@ public:
 	{
 		ImGui::Begin("Settings");
 		ImGui::Text("Last render: %.3fms", m_LastRenderTime);
+		ImGui::Text("Camera Position: %.3f, %.3f, %.3f", m_Camera.GetPosition().x, m_Camera.GetPosition().y, m_Camera.GetPosition().z);
+		ImGui::Text("Camera Direction: %.3f, %.3f, %.3f", m_Camera.GetDirection().x, m_Camera.GetDirection().y, m_Camera.GetDirection().z);
 		
 		ImGui::Text("Visual debugging");
+		ImGui::Checkbox("Enable debugging of ray for last saved pixel", &m_Renderer.GetVisualDebugging().enableRaysDebugging);
 		ImGui::Checkbox("Enable wireframe of triangles", &m_Renderer.GetVisualDebugging().enableWireframeTriangles);
 		ImGui::Checkbox("Enable wireframe of BVH", &m_Renderer.GetVisualDebugging().enableWireframeBvh);
 
@@ -95,7 +133,9 @@ public:
 		ImGui::Separator();
 		ImGui::Text("Settings");
 		ImGui::Checkbox("Real time ray trace", &m_Renderer.GetSettings().enableRayTracing);
-		ImGui::Checkbox("Bilinear interpolation", &m_Renderer.GetSettings().applyBilinearInterpolation);
+		ImGui::Checkbox("Enable shadows", &m_Renderer.GetSettings().enableShadows);
+		ImGui::Checkbox("Apply texture(defaults to bilinear interpolation)", &m_Renderer.GetSettings().applyTexture);
+		ImGui::SliderInt("Number of bounces(default is 1)", &m_Renderer.GetSettings().bounces, 0, 10);
 
 		ImGui::End();
 
@@ -122,14 +162,14 @@ public:
 
 		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
-		m_Renderer.Render(m_Scene, m_Camera, m_Renderer.GetSettings(), m_Renderer.GetVisualDebugging());
+		m_Renderer.Render(m_Scene, m_Camera);
 		m_LastRenderTime = timer.ElapsedMillis();
 	}
 
 	void Debug()
 	{
-		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
-		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
+		//m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
+		//m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Renderer.Debug(m_Scene, m_Camera);
 	}
 
@@ -139,10 +179,6 @@ private:
 	Scene m_Scene;
 
 	uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
-	bool rayTraceMode = true;
-	bool debugTrianglesOverlayMode = false;
-	bool debugBvhOverlayMode = false;
-	bool drawBvh = false;
 
 	float m_LastRenderTime = 0.0f;
 };

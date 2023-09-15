@@ -16,6 +16,27 @@ bool intersectAABB(const Ray& ray, const AABB& box, bool debug)
     return tFar >= tNear && tFar >= EPSILON;
 }
 
+//bool intersectAABB(const Ray& ray, const AABB& box, bool debug)
+//{
+//    float tNear = -INFINITY;
+//    float tFar = INFINITY;
+//    for (int a = 0; a < 3; a++)
+//    {
+//        float invD = 1.0f / ray.direction[a];
+//        float origin = ray.origin[a];
+//		float t0 = (box.lower[a] - origin) * invD;
+//		float t1 = (box.upper[a] - origin) * invD;
+//		if (invD < 0.0f)
+//			std::swap(t0, t1);
+//		float tNear = std::max(tNear, t0);
+//		float tFar = std::min(tFar, t1);
+//		if (tFar <= tNear )
+//			return false;
+//    }
+//    
+//    return true;
+//}
+
 
 void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId, bool debug)
 {
@@ -48,7 +69,7 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
 
     float t = f * glm::dot(edge2, q);
     if(debug)
-        std::cout << "t: " << t << std::endl;
+        std::cout << "t: " << t << "\n";
     //The shader is called once per ray that successfuly hits an object, while the update conditon below is called every time we intersect a triangle that is closer than the current one.
     //What if there are 10 triangles that intersect the ray, while we are only interested in the closest one? We would have to update the full hit info 10 times. Better to perform the update
     //on a smaller data structure, and only update the full hit info once we know we have the closest triangle.

@@ -20,9 +20,9 @@ namespace Utils
 
 	static uint32_t ConvertToRGBA(const glm::vec3& color)
 	{
-		uint8_t r = (uint8_t)(color.r * 255.0f);
-		uint8_t g = (uint8_t)(color.g * 255.0f);
-		uint8_t b = (uint8_t)(color.b * 255.0f);
+		uint8_t r = static_cast<uint8_t>(color.r * 255.0f);
+		uint8_t g = static_cast<uint8_t>(color.g * 255.0f);
+		uint8_t b = static_cast<uint8_t>(color.b * 255.0f);
 		uint8_t a = 255;
 
 		uint32_t result = (a << 24) | (b << 16) | (g << 8) | r;
@@ -449,26 +449,24 @@ FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo
 	else
 		normal = glm::normalize((1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal);
 	Material mat = scene->materials[triangle.materialIndex];
-	if (m_settings.applyTexture && mat.textureIndex >= 0)
+	if (m_settings.applyTexture)
 	{
-		//glm::vec3 color0 = applyBilinearInterpolation(v0, scene->textures[mat.textureIndex]);
-		//glm::vec3 color1 = applyBilinearInterpolation(v1, scene->textures[mat.textureIndex]);
-		//glm::vec3 color2 = applyBilinearInterpolation(v2, scene->textures[mat.textureIndex]);
-		//mat.kd = (1 - u - v) * color0 + u * color1 + v * color2;
-		float interpolatedX = (1 - u - v) * v0.texCoord.x + u * v1.texCoord.x + v * v2.texCoord.x;
-		float interpolatedY = (1 - u - v) * v0.texCoord.y + u * v1.texCoord.y + v * v2.texCoord.y;
-		mat.kd = applyBilinearInterpolation(interpolatedX, interpolatedY, scene->textures[mat.textureIndex]);
+		glm::vec2 pixelCoord = (1 - u - v) * v0.texCoord + u * v1.texCoord + v * v2.texCoord;
+		if(mat.diffuseMapIndex >= 0)
+			mat.kd = applyBilinearInterpolation(pixelCoord, scene->diffuseMaps[mat.diffuseMapIndex]);
+		if (mat.normalMapIndex >= 0)
+			normal = applyBilinearInterpolation(pixelCoord, scene->normalMaps[mat.normalMapIndex]);
 	}
 	
 		
 	return FullHitInfo{ hitPos, normal, mat };
 }
 
-glm::vec3 Renderer::applyBilinearInterpolation(float x, float y, const Texture& texture)
+glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, const Texture& texture)
 {
 
-	float texelX = fmod(x * (texture.width - 1), texture.width);
-	float texelY = fmod(y * (texture.height - 1), texture.height);
+	float texelX = fmod(pixelCoord.x * (texture.width - 1), texture.width);
+	float texelY = fmod(pixelCoord.y * (texture.height - 1), texture.height);
 	if(texelX < 0)
 		texelX += texture.width;
 	if (texelY < 0)
@@ -483,9 +481,6 @@ glm::vec3 Renderer::applyBilinearInterpolation(float x, float y, const Texture& 
 	float u = texelX - x0;
 	float v = texelY - y0;
 	
-	//std::cout << "texelX: " << texelX << " texelY: " << texelY << "\n";
-	//std::cout << "x0: " << x0 << " y0: " << y0 << "\n";
-	//std::cout << "width: " << texture.width << "height: " << texture.height << "x0: " << x0 << " x1: " << x1 << " y0: " << y0 << " y1: " << y1 << "\n";
 	int tl = y0 * texture.width + x0;
 	int tr = y0 * texture.width + x1;
 	int bl = y1 * texture.width + x0;
@@ -497,13 +492,6 @@ glm::vec3 Renderer::applyBilinearInterpolation(float x, float y, const Texture& 
 	glm::vec3 colorBr = texture.pixels[br];
 
 	glm::vec3 color = (1 - u) * (1 - v) * colorTl + u * (1 - v) * colorTr + (1 - u) * v * colorBl + u * v * colorBr;
-	/*std::lock_guard<std::mutex> lock(coutMutex);
-	std::cout << "u: " << u << " v: " << v << "\n";
-	std::cout <<"tl: " << colorTl.x << " " << colorTl.y << " " << colorTl.z << "\n";
-	std::cout << "tr: " << colorTr.x << " " << colorTr.y << " " << colorTr.z << "\n";
-	std::cout << "bl: " << colorBl.x << " " << colorBl.y << " " << colorBl.z << "\n";
-	std::cout << "br: " << colorBr.x << " " << colorBr.y << " " << colorBr.z << "\n" << "\n";
-	std::cout << "color: " << color.x << " " << color.y << " " << color.z << "\n" << "\n";*/
 	return color;
 }
 

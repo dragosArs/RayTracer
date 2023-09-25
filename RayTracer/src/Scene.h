@@ -2,7 +2,6 @@
 
 #include <glm/glm.hpp>
 #include <vector>
-#include <variant>
 #include <filesystem>
 #include "Bvh.h"
 #include "rapidobj.hpp"
@@ -24,17 +23,6 @@ struct ParallelogramLight {
     glm::vec3 edge01, edge02; // edges from v0 to v1, and from v0 to v2
     glm::vec3 color0, color1, color2, color3;
 };
-
-//Use a vector of materials, not only to reuse materials but also pass indices insetad of full materials
-struct Scene {
-    std::vector<Material> materials;
-    std::vector<Vertex> vertices;
-    std::vector<Texture> textures;
-    std::vector<Triangle> triangles;
-    std::unique_ptr<BVH> bvh;
-    std::vector<PointLight> lightSources;
-};
-
 
 struct Key {
     uint32_t posIndex;
@@ -59,10 +47,29 @@ struct std::hash<Key> {
     }
 };
 
+//Use a vector of materials, not only to reuse materials but also pass indices insetad of full materials
+struct Scene {
+    std::vector<Material> materials;
+    std::vector<Vertex> vertices;
+    std::vector<Texture> diffuseMaps;
+    std::vector<Texture> normalMaps;
+    std::vector<Triangle> triangles;
+    std::unique_ptr<BVH> bvh;
+    std::vector<PointLight> lightSources;
 
-// Load a prebuilt scene.
-void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene);
-void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes, std::vector<Triangle>& triangles, std::vector<Vertex>& vertices);
-uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::vector<Vertex>& vertices, std::unordered_map<Key, int>& uniqueIndexKeys);
-std::unique_ptr<BVH> prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangles, int left, int right, int level);
+    // Load a prebuilt scene.
+    void load(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath);
+    void loadMaterials(const std::vector<rapidobj::Material>& materials);
+    void updateDiffuseMap(Material& material, const std::string& diffuse_texname, std::unordered_map<std::string, int>& texMap);
+    void updateNormalMap(Material& material, const std::string& normal_texname, std::unordered_map<std::string, int>& texMap);
+    void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes);
+    uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::unordered_map<Key, int>& uniqueIndexKeys);
+    std::unique_ptr<BVH> prepBvh(int left, int right, int level);
+};
+
 std::vector<glm::vec3> loadTexture(std::shared_ptr<unsigned char> imageData, int width, int height, int numChannels);
+
+
+
+
+

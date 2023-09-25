@@ -4,66 +4,104 @@
 
 
 [[nodiscard]]
-void loadScene(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath, Scene& scene)
+void Scene::load(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath)
 {
 	auto objectFullFilePath = std::filesystem::current_path().string() + objectFilePath.string();
 	auto materialFullFilePath = std::filesystem::current_path().string() + materialFilePath.string();
 	rapidobj::MaterialLibrary ml = rapidobj::MaterialLibrary::SearchPath(materialFullFilePath, rapidobj::Load::Mandatory);
 	rapidobj::Result result = rapidobj::ParseFile(objectFullFilePath, ml);
-	std::unordered_map<std::string, int> texMap;
 
 	if (result.error) 
 		std::cout << result.error.code.message() << '\n';
 	if(!rapidobj::Triangulate(result))
 		std::cout << "Triangulation failed\n";
 
-	for (const rapidobj::Material& material : result.materials)
+	loadMaterials(result.materials);
+	for (const rapidobj::Shape& shape : result.shapes)
+		createUniqueVertices(shape.mesh, result.attributes);
+	std::cout << diffuseMaps.size() << '\n';
+	std::cout << normalMaps.size() << '\n';
+	bvh = prepBvh(0, triangles.size() - 1, 0);	
+}
+
+void Scene::loadMaterials(const std::vector<rapidobj::Material>& rapidObjMaterials)
+{
+	std::unordered_map<std::string, int> texMap;
+
+	for (const rapidobj::Material& material : rapidObjMaterials)
 	{
 		Material myMaterial;
-		
+		//material.normal_texname.
 		//If a texture is specified in the material file, load it and add it to the scene
 		if (material.diffuse_texname != "") {
-			//If material hasn't been found before load it and add it to the scene, otherwise just assign the already loaded texture to the material
-			std::cout << material.diffuse_texname << '\n';
-			if (texMap.find(material.diffuse_texname) == texMap.end()) {
-				std::string filePathString = "assets\\textures\\" + material.diffuse_texname;
-				const char* filePath = filePathString.c_str();
-				int width, height, channels;
-				std::shared_ptr<stbi_uc> imageData(stbi_load(filePath, &width, &height, &channels, 0), stbi_image_free);
-				if(!imageData)
-					std::cout << "Failed to load texture\n";
-				else {
-					Texture texture;
-					texture.pixels = loadTexture(imageData, width, height, channels);
-					texture.width = width;
-					texture.height = height;
-					texture.channels = channels;
-					texMap[material.diffuse_texname] = scene.textures.size();
-					scene.textures.push_back(texture);
-					myMaterial.textureIndex = scene.textures.size() - 1;
-				}	
-			}
-			else {
-				myMaterial.textureIndex = texMap[material.diffuse_texname];
-
-			}	
+			updateDiffuseMap(myMaterial, material.diffuse_texname, texMap);
 		}
-		myMaterial.kd = glm::vec3{ material.diffuse[0], material.diffuse[1], material.diffuse[2]};
-		myMaterial.ks = glm::vec3{ material.specular[0], material.specular[1], material.specular[2]};
+		if (material.normal_texname != "") {
+			updateNormalMap(myMaterial, material.normal_texname, texMap);
+		}
+		myMaterial.kd = glm::vec3{ material.diffuse[0], material.diffuse[1], material.diffuse[2] };
+		myMaterial.ks = glm::vec3{ material.specular[0], material.specular[1], material.specular[2] };
 		myMaterial.shininess = material.shininess;
 		myMaterial.transparency = 1 - material.dissolve;
-		scene.materials.push_back(myMaterial);
+		materials.push_back(myMaterial);
 	}
+}	
 
-	for (const rapidobj::Shape& shape : result.shapes)
-		createUniqueVertices(shape.mesh, result.attributes, scene.triangles, scene.vertices);
-	std::cout << scene.textures.size() << '\n';
-	scene.bvh = prepBvh(scene.vertices, scene.triangles, 0, scene.triangles.size() - 1, 0);	
+void Scene::updateDiffuseMap(Material& material, const std::string& diffuse_texname, std::unordered_map<std::string, int>& texMap)
+{
+	//If material hasn't been found before load it and add it to the scene, otherwise just assign the already loaded texture to the material
+	if (texMap.find(diffuse_texname) == texMap.end()) {
+		std::string filePathString = "assets\\textures\\" + diffuse_texname;
+		const char* filePath = filePathString.c_str();
+		int width, height, channels;
+		std::shared_ptr<stbi_uc> imageData(stbi_load(filePath, &width, &height, &channels, 0), stbi_image_free);
+		if (!imageData)
+			std::cout << "Failed to load diffuse map\n";
+		else {
+			Texture texture;
+			texture.pixels = loadTexture(imageData, width, height, channels);
+			texture.width = width;
+			texture.height = height;
+			texture.channels = channels;
+			texMap[diffuse_texname] = diffuseMaps.size();
+			diffuseMaps.push_back(texture);
+			material.diffuseMapIndex = diffuseMaps.size() - 1;
+		}
+	}
+	else {
+		material.diffuseMapIndex = texMap[diffuse_texname];
+	}
+}
+
+void Scene::updateNormalMap(Material& material, const std::string& normal_texname, std::unordered_map<std::string, int>& texMap)
+{
+	//If material hasn't been found before load it and add it to the scene, otherwise just assign the already loaded texture to the material
+	if (texMap.find(normal_texname) == texMap.end()) {
+		std::string filePathString = "assets\\textures\\" + normal_texname;
+		const char* filePath = filePathString.c_str();
+		int width, height, channels;
+		std::shared_ptr<stbi_uc> imageData(stbi_load(filePath, &width, &height, &channels, 0), stbi_image_free);
+		if (!imageData || channels != 3)
+			std::cout << "Failed to load normal map\n";
+		else {
+			Texture texture;
+			texture.pixels = loadTexture(imageData, width, height, channels);
+			texture.width = width;
+			texture.height = height;
+			texture.channels = channels;
+			texMap[normal_texname] = normalMaps.size();
+			normalMaps.push_back(texture);
+			material.normalMapIndex = normalMaps.size() - 1;
+		}
+	}
+	else {
+		material.normalMapIndex = texMap[normal_texname];
+	}
 }
 
 
 //"returns" a vector of triangles and vertices
-void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes, std::vector<Triangle>& triangles, std::vector<Vertex>& vertices)
+void Scene::createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes)
 {
 	std::unordered_map<Key, int> uniqueIndexKeys;
 
@@ -73,15 +111,15 @@ void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes
 		const Key key2 = { (uint32_t)mesh.indices[i + 1].position_index, (uint32_t)mesh.indices[i + 1].normal_index , (uint32_t)mesh.indices[i + 1].texcoord_index };
 		const Key key3 = { (uint32_t)mesh.indices[i + 2].position_index, (uint32_t)mesh.indices[i + 2].normal_index , (uint32_t)mesh.indices[i + 2].texcoord_index };
 
-		uint32_t index1 = getIndexOfVertex(key1, attributes, vertices, uniqueIndexKeys);
-		uint32_t index2 = getIndexOfVertex(key2, attributes, vertices, uniqueIndexKeys);
-		uint32_t index3 = getIndexOfVertex(key3, attributes, vertices, uniqueIndexKeys);
+		uint32_t index1 = getIndexOfVertex(key1, attributes, uniqueIndexKeys);
+		uint32_t index2 = getIndexOfVertex(key2, attributes, uniqueIndexKeys);
+		uint32_t index3 = getIndexOfVertex(key3, attributes, uniqueIndexKeys);
 
 		triangles.push_back(Triangle{ index1, index2, index3, (uint32_t) mesh.material_ids[i / 3], getTriangleCentroid(vertices[index1].position, vertices[index2].position, vertices[index3].position)});
 	}
 }
 
-uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::vector<Vertex>& vertices, std::unordered_map<Key, int>& uniqueIndexKeys) {
+uint32_t Scene::getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::unordered_map<Key, int>& uniqueIndexKeys) {
 	uint32_t index = 0;
 	auto it = uniqueIndexKeys.find(key);
 
@@ -107,7 +145,8 @@ uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes
 	return index;
 }
 
-std::unique_ptr<BVH> prepBvh(const std::vector<Vertex>& vertices, std::vector<Triangle>& triangles, int left, int right, int level) {
+
+std::unique_ptr<BVH> Scene::prepBvh(int left, int right, int level) {
 	if (level == 0)
 		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
 			return lhs.centroid.z < rhs.centroid.z;
@@ -124,8 +163,8 @@ std::unique_ptr<BVH> prepBvh(const std::vector<Vertex>& vertices, std::vector<Tr
 	int mid = (left + right) / 2;
 	if (left != right)
 	{
-		std::unique_ptr<BVH> leftBvh = std::move(prepBvh(vertices, triangles, left, mid, (level + 1) % 3));
-		std::unique_ptr<BVH> rightBvh = std::move(prepBvh(vertices, triangles, mid + 1, right, (level + 1) % 3));
+		std::unique_ptr<BVH> leftBvh = std::move(prepBvh(left, mid, (level + 1) % 3));
+		std::unique_ptr<BVH> rightBvh = std::move(prepBvh(mid + 1, right, (level + 1) % 3));
 		
 		float minX = std::min(leftBvh->boundingBox.lower.x, rightBvh->boundingBox.lower.x);
 		float minY = std::min(leftBvh->boundingBox.lower.y, rightBvh->boundingBox.lower.y);

@@ -5,6 +5,7 @@
 #include "Calculation_utility.h"
 #include "Renderer.h"
 
+
 glm::vec3 diffuseOnly(const FullHitInfo& hitInfo, const PointLight& pointLight);
 glm::vec3 phongSpecularOnly(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight);
 glm::vec3 blinnPhongSpecularOnly(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight);

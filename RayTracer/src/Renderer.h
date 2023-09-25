@@ -40,8 +40,8 @@ public:
 		bool Accumulate = true;
 		bool enableRayTracing = true;
 		bool enableShadows = true;
-		bool applyTexture = false;
-		int bounces = 1;
+		bool applyTexture = true;
+		int bounces = 0;
 	};
 
 	struct VisualDebugging
@@ -69,7 +69,7 @@ private:
 	void traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug);
 	bool isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex);
 	FullHitInfo retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray);
-	glm::vec3 Renderer::applyBilinearInterpolation(const Vertex& vertex, const Texture& texture);
+	glm::vec3 Renderer::applyBilinearInterpolation(float x, float y, const Texture& texture);
 
 private:
 	std::shared_ptr<Walnut::Image> m_finalImage;

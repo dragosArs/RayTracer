@@ -167,14 +167,7 @@ std::vector<glm::vec3> loadTexture(std::shared_ptr<unsigned char> imageData, int
 		uint32_t size = 3 * width * height;
 		for (uint32_t i = 0; i < size; i += 3)
 		{
-			//TODO change back
-			glm::vec3 color;
-			if(imageData.get()[i] < 200)
-				color = glm::vec3{ 0.1f, 0.1f, 0.1f };
-			else
-				color = glm::vec3{ 1.0f, 1.0f, 1.0f };
-			pixels.emplace_back(color);
-			//pixels.emplace_back(imageData.get()[i] / 255.0f, imageData.get()[i + 1] / 255.0f, imageData.get()[i + 2] / 255.0f);
+			pixels.emplace_back(imageData.get()[i] / 255.0f, imageData.get()[i + 1] / 255.0f, imageData.get()[i + 2] / 255.0f);
 		}
 	}
 	else if (numChannels == 1)

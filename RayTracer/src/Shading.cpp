@@ -1,6 +1,8 @@
 #include "Shading.h"
 #include <iostream>
 
+
+std::mutex coutMutex;
 glm::vec3 phongFull(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
 
@@ -9,13 +11,13 @@ glm::vec3 phongFull(const FullHitInfo& hitInfo, const Camera& camera, const Poin
 
 glm::vec3 diffuseOnly(const FullHitInfo& hitInfo, const PointLight& pointLight)
 {
+    std::lock_guard<std::mutex> lock(coutMutex);
+    //std::cout << hitInfo.material.kd.x << " " << hitInfo.material.kd.y << " " << hitInfo.material.kd.z << std::endl;
     glm::vec3 lightDir = glm::normalize(pointLight.position - hitInfo.position);
     float value = glm::dot(lightDir, hitInfo.normal);
     if (value < 0)
         return glm::vec3{ 0.0f };
     return hitInfo.material.kd * value * pointLight.color;
-
-    return hitInfo.material.kd * pointLight.color;
 }
 
 glm::vec3 phongSpecularOnly(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)

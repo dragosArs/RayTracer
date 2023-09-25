@@ -14,8 +14,7 @@
 #include <queue>
 #include <glm/gtc/type_ptr.hpp>
 
-std::mutex coutMutex;
-
+//std::mutex coutMutex;
 namespace Utils
 {
 
@@ -106,15 +105,15 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	}
 	else
 	{
-			std::for_each(std::execution::par, m_imageVerticalIter.begin(), m_imageVerticalIter.end(),
-				[this](uint32_t y)
-				{
-					std::for_each(std::execution::par, m_imageHorizontalIter.begin(), m_imageHorizontalIter.end(),
-					[this, y](uint32_t x)
-						{
-							m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(glm::vec3{0.0f});
-						});
-				});
+		std::for_each(std::execution::par, m_imageVerticalIter.begin(), m_imageVerticalIter.end(),
+			[this](uint32_t y)
+			{
+				std::for_each(std::execution::par, m_imageHorizontalIter.begin(), m_imageHorizontalIter.end(),
+				[this, y](uint32_t x)
+					{
+						m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(glm::vec3{ 0.0f });
+					});
+			});
 	}
 	std::unordered_map<Coord, float> zBuffer;
 	if (m_visualDebugging.enableWireframeTriangles)
@@ -265,18 +264,16 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	glm::vec3 color = glm::vec3{ 0.0f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	BasicHitInfo basicHitInfo;
-	int bounces = 3;
 	for (int i = 0; i <= m_settings.bounces; i++)
 	{
 		//"reset" ray
 		ray.t = -1.0f;
 		traceRay(ray, basicHitInfo, debug);
-		if(debug)
-			std::cout << "ray.t: " << ray.t << "\n";
 		FullHitInfo fullHitInfo;
 		if (ray.t > EPSILON )
 		{
 			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
+			//std::cout << fullHitInfo.material.kd.x << " " << fullHitInfo.material.kd.y << " " << fullHitInfo.material.kd.z << std::endl;
 			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
 			ray.origin =  fullHitInfo.position + EPSILON * ray.direction;
 			ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
@@ -296,9 +293,9 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 				reflectiveContribution = fullHitInfo.material.ks * reflectiveContribution;
 			else
 				break;
-		}
+		}  
 		else
-			i = bounces;
+			i = m_settings.bounces;
 	}
 	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
 	return finalColor;
@@ -351,7 +348,6 @@ std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(ui
 		}
 		else
 			i = bounces;
-		std::cout << "ray.t: " << ray.t << "\n";
 		debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{rayOrigDebug, rayOrigDebug + ray.t * rayDirDebug, color});
 	}
 
@@ -360,6 +356,8 @@ std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(ui
 
 
 //This function doesn't return anything, but changes ray.t and hitInfo
+//TODO
+//Can be more efficient by coding an early stop. If ray.t is smaller than the distance to the bounding box, then we don't need to check the triangles inside the bounding box
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 {
 	std::queue<const BVH*> queue;
@@ -379,8 +377,6 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 		}
 		else {
 			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
-			if(debug)
-				std::cout << ray.t << "\n";
 		}
 		
 
@@ -391,8 +387,6 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 		}
 		else {
 			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
-			if(debug)
-				std::cout << ray.t << "\n";
 		}
 	}
 }
@@ -408,6 +402,7 @@ bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t ori
 		queue.pop();
 		const BVH* leftBvh = cur->left.get();
 		const BVH* rightBvh = cur->right.get();
+		//delete cur;
 
 		if (leftBvh->triangleIndex == -1)
 		{
@@ -448,37 +443,36 @@ FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo
 	float u = basicHitInfo.barU;
 	float v = basicHitInfo.barV;
 	glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
-	glm::vec3 normal = glm::normalize((1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal);
+	glm::vec3 normal;
+	if(v0.normal == glm::vec3{0.0f} || v1.normal == glm::vec3{0.0f} || v2.normal == glm::vec3{0.0f})
+		normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+	else
+		normal = glm::normalize((1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal);
 	Material mat = scene->materials[triangle.materialIndex];
-
 	if (m_settings.applyTexture && mat.textureIndex >= 0)
 	{
-		glm::vec3 color0 = applyBilinearInterpolation(v0, scene->textures[mat.textureIndex]);
-		glm::vec3 color1 = applyBilinearInterpolation(v1, scene->textures[mat.textureIndex]);
-		glm::vec3 color2 = applyBilinearInterpolation(v2, scene->textures[mat.textureIndex]);
-		/*std::lock_guard<std::mutex> lock(coutMutex);
-		std::cout << "color0: " << color0.x << " " << color0.y << " " << color0.z << "\n";
-		std::cout << "color1: " << color1.x << " " << color1.y << " " << color1.z << "\n";
-		std::cout << "color2: " << color2.x << " " << color2.y << " " << color2.z << "\n";*/
-		
-		mat.kd = (1 - u - v) * color0 + u * color1 + v * color2;
-		//std::cout << "fff" << mat.kd.x << mat.kd.y << mat.kd.z << "\n" << "\n";
+		//glm::vec3 color0 = applyBilinearInterpolation(v0, scene->textures[mat.textureIndex]);
+		//glm::vec3 color1 = applyBilinearInterpolation(v1, scene->textures[mat.textureIndex]);
+		//glm::vec3 color2 = applyBilinearInterpolation(v2, scene->textures[mat.textureIndex]);
+		//mat.kd = (1 - u - v) * color0 + u * color1 + v * color2;
+		float interpolatedX = (1 - u - v) * v0.texCoord.x + u * v1.texCoord.x + v * v2.texCoord.x;
+		float interpolatedY = (1 - u - v) * v0.texCoord.y + u * v1.texCoord.y + v * v2.texCoord.y;
+		mat.kd = applyBilinearInterpolation(interpolatedX, interpolatedY, scene->textures[mat.textureIndex]);
 	}
 	
 		
 	return FullHitInfo{ hitPos, normal, mat };
 }
 
-glm::vec3 Renderer::applyBilinearInterpolation(const Vertex& vertex, const Texture& texture)
+glm::vec3 Renderer::applyBilinearInterpolation(float x, float y, const Texture& texture)
 {
 
-
-
-	float texelX = fmod(vertex.texCoord.x * (texture.width - 1), texture.width);
-	float texelY = fmod(vertex.texCoord.y * (texture.height - 1), texture.height);
-	texelX = texelX < 0 ? texelX + texture.width : texelX;
-	texelY = texelY < 0 ? texelY + texture.height : texelY;
-	//texelY = texture.height - texelY;
+	float texelX = fmod(x * (texture.width - 1), texture.width);
+	float texelY = fmod(y * (texture.height - 1), texture.height);
+	if(texelX < 0)
+		texelX += texture.width;
+	if (texelY < 0)
+		texelY += texture.height;
 
 	// Convert to image coordinates
 	int x0 = static_cast<int>(texelX);
@@ -492,10 +486,10 @@ glm::vec3 Renderer::applyBilinearInterpolation(const Vertex& vertex, const Textu
 	//std::cout << "texelX: " << texelX << " texelY: " << texelY << "\n";
 	//std::cout << "x0: " << x0 << " y0: " << y0 << "\n";
 	//std::cout << "width: " << texture.width << "height: " << texture.height << "x0: " << x0 << " x1: " << x1 << " y0: " << y0 << " y1: " << y1 << "\n";
-	int tl = (y0 * texture.width + x0);
-	int tr = (y0 * texture.width + x1);
-	int bl = (y1 * texture.width + x0);
-	int br = (y1 * texture.width + x1);
+	int tl = y0 * texture.width + x0;
+	int tr = y0 * texture.width + x1;
+	int bl = y1 * texture.width + x0;
+	int br = y1 * texture.width + x1;
 
 	glm::vec3 colorTl = texture.pixels[tl];
 	glm::vec3 colorTr = texture.pixels[tr];
@@ -512,39 +506,5 @@ glm::vec3 Renderer::applyBilinearInterpolation(const Vertex& vertex, const Textu
 	std::cout << "color: " << color.x << " " << color.y << " " << color.z << "\n" << "\n";*/
 	return color;
 }
-
-//glm::vec3 Renderer::applyBilinearInterpolation(const Vertex& vertex, const Texture& texture)
-//{
-//	const glm::vec2 pos = glm::vec2(vertex.texCoord * glm::vec2(texture.width, texture.height) + 0.0f);
-//	const glm::ivec2 pixel = pos;
-//
-//	int tl_pos = pixel.y * texture.width + pixel.x;
-//	int tr_pos = tl_pos + 1;
-//	int bl_pos = tl_pos + texture.width;
-//	int br_pos = bl_pos + 1;
-//	int nr_pixels = texture.pixels.size();
-//	if (tl_pos < 0 || tl_pos >= nr_pixels)
-//		tl_pos = 0;
-//	if (tr_pos < 0 || tr_pos >= nr_pixels)
-//		tr_pos = tl_pos;
-//	if (bl_pos < 0 || bl_pos >= nr_pixels)
-//		bl_pos = tl_pos;
-//	if (br_pos < 0 || br_pos >= nr_pixels)
-//		br_pos = tl_pos;
-//
-//
-//	glm::vec3 tl_Kd = texture.pixels[tl_pos];
-//	glm::vec3 tr_Kd = texture.pixels[tr_pos];
-//	glm::vec3 bl_Kd = texture.pixels[bl_pos];
-//	glm::vec3 br_Kd = texture.pixels[br_pos];
-//
-//	float alpha_horizontal = pos.x - int(pos.x);
-//	glm::vec3 top = alpha_horizontal * tr_Kd + (1 - alpha_horizontal) * tl_Kd;
-//	glm::vec3 bottom = alpha_horizontal * br_Kd + (1 - alpha_horizontal) * bl_Kd;
-//
-//	float beta_vertical = pos.y - int(pos.y);
-//
-//	return beta_vertical * bottom + (1 - beta_vertical) * top;
-//}
 
 

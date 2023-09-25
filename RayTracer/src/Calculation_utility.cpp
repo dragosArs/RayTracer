@@ -68,11 +68,7 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
         return;
 
     float t = f * glm::dot(edge2, q);
-    if(debug)
-        std::cout << "t: " << t << "\n";
-    //The shader is called once per ray that successfuly hits an object, while the update conditon below is called every time we intersect a triangle that is closer than the current one.
-    //What if there are 10 triangles that intersect the ray, while we are only interested in the closest one? We would have to update the full hit info 10 times. Better to perform the update
-    //on a smaller data structure, and only update the full hit info once we know we have the closest triangle.
+
     if(t > EPSILON && (ray.t == -1.0f || ray.t > t)) {
         ray.t = t;
         hitInfo.triangleIndex = triangleId;
@@ -111,18 +107,11 @@ bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triang
     if (v < 0.0f || u + v > 1.0f)
         return false;
 
-    float t = f * glm::dot(edge2, q);
-    //return t > EPSILON && t + EPSILON < length;
-    
-    if (t > EPSILON && t + EPSILON < length) {
-        glm::vec3 normal = glm::normalize((1 - u - v) * scene.vertices[triangle.vertexIndex0].normal +
-            u * scene.vertices[triangle.vertexIndex1].normal + v * scene.vertices[triangle.vertexIndex2].normal);
-        return glm::dot(ray.direction, normal) > 0;
-    }
-    
-    return false;
-    
+    float t = f * glm::dot(edge2, q); 
+    return t > EPSILON && t + EPSILON < length;
 }
+
+
     
 
 

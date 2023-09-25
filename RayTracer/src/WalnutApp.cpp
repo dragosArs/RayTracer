@@ -22,13 +22,13 @@ public:
 		
 #define SCENE 1
 #if SCENE
-		loadScene("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl", m_Scene);
+		loadScene("\\assets\\objects\\bridge.obj", "\\assets\\materials\\bridge.mtl", m_Scene);
 		
 		/*m_Camera.SetDirection({ 0.0f, 0.0f, -1.0f });
 		m_Camera.SetPosition({ 0.0f, 0.0f, 30.0f });*/
 
 		m_Camera.SetDirection({ 0.0f, 0.0f, -1.0f });
-		m_Camera.SetPosition({ 0.0f, 0.0f, 50.0f });
+		m_Camera.SetPosition({ 0.0f, 0.0f, 30.0f });
 		/*
 		{
 			PointLight pointLight;

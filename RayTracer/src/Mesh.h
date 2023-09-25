@@ -12,7 +12,7 @@ struct AABB
 struct Vertex
 {
     glm::vec3 position;
-    glm::vec3 normal = { 0.0f, 0.0f, 1.0f };
+    glm::vec3 normal = { 0.0f, 0.0f, 0.0f };
     glm::vec2 texCoord = { 0.0f, 0.0f };
 
     friend std::ostream& operator<<(std::ostream& os, const Vertex& v);

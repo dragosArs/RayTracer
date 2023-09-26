@@ -13,6 +13,7 @@
 #include <iostream>
 #include <queue>
 #include <glm/gtc/type_ptr.hpp>
+#include <stack>
 
 
 namespace Utils
@@ -202,15 +203,51 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	return finalColor;
 }
 
+//void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
+//{
+//	std::stack<const BVH*> stack;
+//	std::queue<const BVH*> queue;
+//	queue.push(m_activeScene->bvh.get());
+//
+//	while (queue.size() > 0)
+//	{
+//		const BVH* cur = queue.front();
+//		queue.pop();
+//		const BVH* leftBvh = cur->left.get();
+//		const BVH* rightBvh = cur->right.get();
+//
+//		if (leftBvh->triangleIndex == -1)
+//		{
+//			float dist = intersectAABB(ray, leftBvh->boundingBox, debug);
+//			if (dist > 0 && dist < ray.t)
+//				queue.push(leftBvh);
+//		}
+//		else {
+//			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
+//		}
+//
+//
+//		if (rightBvh->triangleIndex == -1)
+//		{
+//			float dist = intersectAABB(ray, rightBvh->boundingBox, debug);
+//			if (dist > 0 && dist < ray.t)
+//				queue.push(rightBvh);
+//		}
+//		else {
+//			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
+//		}
+//	}
+//}
+
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 {
-	std::queue<const BVH*> queue;
-	queue.push(m_activeScene->bvh.get());
+	std::stack<const BVH*> stack;
+	stack.push(m_activeScene->bvh.get());
 
-	while (queue.size() > 0)
+	while (stack.size() > 0)
 	{
-		const BVH* cur = queue.front();
-		queue.pop();
+		const BVH* cur = stack.top();
+		stack.pop();
 		const BVH* leftBvh = cur->left.get();
 		const BVH* rightBvh = cur->right.get();
 
@@ -218,7 +255,7 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 		{
 			float dist = intersectAABB(ray, leftBvh->boundingBox, debug);
 			if (dist > 0 && dist < ray.t)
-				queue.push(leftBvh);
+				stack.push(leftBvh);
 		}
 		else {
 			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
@@ -229,7 +266,7 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 		{
 			float dist = intersectAABB(ray, rightBvh->boundingBox, debug);
 			if (dist > 0 && dist < ray.t)
-				queue.push(rightBvh);
+				stack.push(rightBvh);
 		}
 		else {
 			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
@@ -238,51 +275,14 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 }
 
 
-//This function doesn't return anything, but changes ray.t and hitInfo
-//TODO
-//Can be more efficient by coding an early stop. If ray.t is smaller than the distance to the bounding box, then we don't need to check the triangles inside the bounding box
-//void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
-//{
-//	std::queue<const BVH*> queue;
-//	queue.push(m_activeScene->bvh.get());
-//
-//	while (queue.size() > 0) 
-//	{
-//		const BVH* cur = queue.front();
-//		queue.pop();
-//		const BVH* leftBvh = cur->left.get();
-//		const BVH* rightBvh = cur->right.get();
-//
-//		if (leftBvh->triangleIndex == -1)
-//		{
-//			if (intersectAABB(ray, leftBvh->boundingBox, debug))
-//				queue.push(leftBvh);
-//		}
-//		else {
-//			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
-//		}
-//		
-//
-//		if (rightBvh->triangleIndex == -1)
-//		{
-//			if (intersectAABB(ray, rightBvh->boundingBox, debug))
-//				queue.push(rightBvh);
-//		}
-//		else {
-//			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
-//		}
-//	}
-//}
-
-
 bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex) 
 {
-	std::queue<const BVH*> queue;
-	queue.push(m_activeScene->bvh.get());
+	std::stack<const BVH*> stack;
+	stack.push(m_activeScene->bvh.get());
 
-	while (queue.size() > 0) {
-		const BVH* cur = queue.front();
-		queue.pop();
+	while (stack.size() > 0) {
+		const BVH* cur = stack.top();
+		stack.pop();
 		const BVH* leftBvh = cur->left.get();
 		const BVH* rightBvh = cur->right.get();
 		//delete cur;
@@ -290,7 +290,7 @@ bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t ori
 		if (leftBvh->triangleIndex == -1)
 		{
 			if (intersectAABB(ray, leftBvh->boundingBox, debug) > 0)
-				queue.push(leftBvh);
+				stack.push(leftBvh);
 		}
 		else if (leftBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length, debug))
 		{
@@ -300,7 +300,7 @@ bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t ori
 		if (rightBvh->triangleIndex == -1)
 		{
 			if (intersectAABB(ray, rightBvh->boundingBox, debug) > 0)
-				queue.push(rightBvh);
+				stack.push(rightBvh);
 		}
 		else if (rightBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length, debug))
 		{

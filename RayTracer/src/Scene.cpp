@@ -160,16 +160,17 @@ uint32_t Scene::getIndexOfVertex(const Key& key, const rapidobj::Attributes& att
 }
 
 
-std::unique_ptr<BVH> Scene::prepBvh(int left, int right, const AABB& box) {
-
+std::unique_ptr<BVH> Scene::prepBvh(int left, int right, const AABB& box)
+{
+	//std::cout << "left: " << left << ", right: " << right << "\n";
 	if (left == right - 1) {
+		std::cout << "left: " << left << ", right: " << right << "\n";
 		AABB leafAABB = createAABBForTriangle(triangles[left], vertices);
 		return std::make_unique<BVH>(BVH{ leafAABB, left });//Leaf node
 	}
-	if (left == right)
-		std::cout << "sdfg\n";
+	
 
-	size_t split = 0;
+	int split = 0;
 	glm::vec3 boxSize = box.upper - box.lower;
 	glm::vec3 splitPointRight = box.lower;
 	glm::vec3 splitPointLeft = box.upper;
@@ -201,7 +202,7 @@ std::unique_ptr<BVH> Scene::prepBvh(int left, int right, const AABB& box) {
 	
 }
 
-size_t Scene::splitWithSAH(const AABB& box, const glm::vec3& boxSize, glm::vec3& splitPointLeft, glm::vec3& splitPointRight, int left, int right, int axis)
+int Scene::splitWithSAH(const AABB& box, const glm::vec3& boxSize, glm::vec3& splitPointLeft, glm::vec3& splitPointRight, int left, int right, int axis)
 {
 	float traverse = box.lower[axis];
 	float binSize = boxSize[axis] / 16;

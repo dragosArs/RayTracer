@@ -1,8 +1,8 @@
 #include "Calculation_utility.h"
 #include <iostream>
-#include <immintrin.h>
+#include <immintrin.h>                                                                          
 
-
+//std::mutex coutMutex;
 //float intersectAABB(const Ray& ray, const AABB& box, bool debug)
 //{
 //    glm::vec3 tMin = (box.lower - ray.origin) * ray.invDirection;
@@ -10,13 +10,26 @@
 //    glm::vec3 t1 = glm::min(tMin, tMax);
 //    glm::vec3 t2 = glm::max(tMin, tMax);
 //
-//    float tNear = glm::max(glm::max(t1.x, t1.y), t1.z);
-//    float tFar = glm::min(glm::min(t2.x, t2.y), t2.z);
+//    float tNear = std::max(std::max(t1.x, t1.y), t1.z);
+//    float tFar = std::min(std::min(t2.x, t2.y), t2.z);
 //
-//    //It's not tNear > EPSILON because we want to include the case where the 
-//    // ray starts inside the box
-//    return tNear < tFar && tFar > EPSILON;
-//}                                                                             
+//
+//    //std::lock_guard<std::mutex> lock(coutMutex);
+//    if (tNear < tFar)
+//        std::cout << tNear << "\n";
+//    /*std::cout << "lower: " << box.lower.x << " " << box.lower.y << " " << box.lower.z << "\n";
+//    std::cout << "upper: " << box.upper.x << " " << box.upper.y << " " << box.upper.z << "\n";
+//    std::cout << tNear << tFar << "\n";*/
+//    if (tNear > EPSILON && tNear < tFar) {
+//        return tNear;
+//    }
+//    else if (tNear < EPSILON && tFar > EPSILON) {
+//        return tFar;
+//    }
+//    else
+//        return -1.0f;
+//
+//}
 
 
 float intersectAABB(const Ray& ray, const AABB& box, bool debug)
@@ -26,19 +39,17 @@ float intersectAABB(const Ray& ray, const AABB& box, bool debug)
     glm::vec3 t1 = glm::min(tMin, tMax);
     glm::vec3 t2 = glm::max(tMin, tMax);
 
-    float tNear = glm::max(glm::max(t1.x, t1.y), t1.z);
-    float tFar = glm::min(glm::min(t2.x, t2.y), t2.z);
+    float tNear = std::max(std::max(t1.x, t1.y), t1.z);
+    float tFar = std::min(std::min(t2.x, t2.y), t2.z);
 
-    //It's not tNear > EPSILON because we want to include the case where the 
-    // ray starts inside the box
-    //return (tFar > EPSILON || tNear > -EPSILON) && tNear < tFar;
-    if (tNear > EPSILON && tNear < tFar) {
+    if (tNear > tFar)
+        return -1.0f;
+    else if (tNear > EPSILON)
         return tNear;
-    }
-    if (tNear < EPSILON && tFar > EPSILON) {
+    else if (tFar > EPSILON)
         return tFar;
-    }
-    return -1.0f;
+    else
+        return -1.0f;
 
 }
 

@@ -15,7 +15,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <stack>
 
-
 namespace Utils
 {
 
@@ -175,10 +174,9 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 		if (ray.t > EPSILON && ray.t < 1000.f)
 		{
 			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
-			//std::cout << fullHitInfo.material.kd.x << " " << fullHitInfo.material.kd.y << " " << fullHitInfo.material.kd.z << std::endl;
 			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
 			ray.origin =  fullHitInfo.position + EPSILON * ray.direction;
-			ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
+			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
 
 			for (const PointLight& pointLight : m_activeScene->lightSources)
 			{
@@ -202,42 +200,6 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
 	return finalColor;
 }
-
-//void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
-//{
-//	std::stack<const BVH*> stack;
-//	std::queue<const BVH*> queue;
-//	queue.push(m_activeScene->bvh.get());
-//
-//	while (queue.size() > 0)
-//	{
-//		const BVH* cur = queue.front();
-//		queue.pop();
-//		const BVH* leftBvh = cur->left.get();
-//		const BVH* rightBvh = cur->right.get();
-//
-//		if (leftBvh->triangleIndex == -1)
-//		{
-//			float dist = intersectAABB(ray, leftBvh->boundingBox, debug);
-//			if (dist > 0 && dist < ray.t)
-//				queue.push(leftBvh);
-//		}
-//		else {
-//			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
-//		}
-//
-//
-//		if (rightBvh->triangleIndex == -1)
-//		{
-//			float dist = intersectAABB(ray, rightBvh->boundingBox, debug);
-//			if (dist > 0 && dist < ray.t)
-//				queue.push(rightBvh);
-//		}
-//		else {
-//			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
-//		}
-//	}
-//}
 
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 {

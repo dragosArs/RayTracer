@@ -3,7 +3,23 @@
 #include <immintrin.h>
 
 
-bool intersectAABB(const Ray& ray, const AABB& box, bool debug)
+//float intersectAABB(const Ray& ray, const AABB& box, bool debug)
+//{
+//    glm::vec3 tMin = (box.lower - ray.origin) * ray.invDirection;
+//    glm::vec3 tMax = (box.upper - ray.origin) * ray.invDirection;
+//    glm::vec3 t1 = glm::min(tMin, tMax);
+//    glm::vec3 t2 = glm::max(tMin, tMax);
+//
+//    float tNear = glm::max(glm::max(t1.x, t1.y), t1.z);
+//    float tFar = glm::min(glm::min(t2.x, t2.y), t2.z);
+//
+//    //It's not tNear > EPSILON because we want to include the case where the 
+//    // ray starts inside the box
+//    return tNear < tFar && tFar > EPSILON;
+//}                                                                             
+
+
+float intersectAABB(const Ray& ray, const AABB& box, bool debug)
 {
     glm::vec3 tMin = (box.lower - ray.origin) * ray.invDirection;
     glm::vec3 tMax = (box.upper - ray.origin) * ray.invDirection;
@@ -13,30 +29,18 @@ bool intersectAABB(const Ray& ray, const AABB& box, bool debug)
     float tNear = glm::max(glm::max(t1.x, t1.y), t1.z);
     float tFar = glm::min(glm::min(t2.x, t2.y), t2.z);
 
-    return tFar >= tNear && tFar >= EPSILON;
+    //It's not tNear > EPSILON because we want to include the case where the 
+    // ray starts inside the box
+    //return (tFar > EPSILON || tNear > -EPSILON) && tNear < tFar;
+    if (tNear > EPSILON && tNear < tFar) {
+        return tNear;
+    }
+    if (tNear < EPSILON && tFar > EPSILON) {
+        return tFar;
+    }
+    return -1.0f;
+
 }
-
-//bool intersectAABB(const Ray& ray, const AABB& box, bool debug)
-//{
-//    float tNear = -INFINITY;
-//    float tFar = INFINITY;
-//    for (int a = 0; a < 3; a++)
-//    {
-//        float invD = 1.0f / ray.direction[a];
-//        float origin = ray.origin[a];
-//		float t0 = (box.lower[a] - origin) * invD;
-//		float t1 = (box.upper[a] - origin) * invD;
-//		if (invD < 0.0f)
-//			std::swap(t0, t1);
-//		float tNear = std::max(tNear, t0);
-//		float tFar = std::min(tFar, t1);
-//		if (tFar <= tNear )
-//			return false;
-//    }
-//    
-//    return true;
-//}
-
 
 void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId, bool debug)
 {
@@ -69,7 +73,7 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
 
     float t = f * glm::dot(edge2, q);
 
-    if(t > EPSILON && (ray.t == -1.0f || ray.t > t)) {
+    if(t > EPSILON && t < ray.t) {
         ray.t = t;
         hitInfo.triangleIndex = triangleId;
         hitInfo.barU = u;

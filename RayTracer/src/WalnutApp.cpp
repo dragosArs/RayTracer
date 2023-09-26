@@ -20,9 +20,9 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 		
-#define SCENE 1
+#define SCENE 0
 #if SCENE
-		m_Scene.load("\\assets\\objects\\bridge.obj", "\\assets\\materials\\bridge.mtl");
+		m_Scene.load("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl");
 		
 		/*m_Camera.SetDirection({ 0.0f, 0.0f, -1.0f });
 		m_Camera.SetPosition({ 0.0f, 0.0f, 30.0f });*/
@@ -52,7 +52,7 @@ public:
 		}
 		*/
 		{
-			PointLight pointLight;
+			PointLight pointLight{};
 			pointLight.position = { 0.0f, 0.0f, 30.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
@@ -93,9 +93,9 @@ public:
 			m_Scene.lightSources.push_back(pointLight);
 		}*/
 #else
-		m_Camera.SetPosition({ 0.0f, 0.0f, -3.0f });
+		m_Camera.SetPosition({ 0.0f, 1.0f, -3.0f });
 		m_Camera.SetDirection({ 0.0f, 0.0f, 1.0f });
-		loadScene("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl", m_Scene);
+		m_Scene.load("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl");
 		{
 			PointLight pointLight;
 			pointLight.position = { 0.005f, 1.98f, 0.0325f };

@@ -39,7 +39,7 @@ public:
 	{
 		bool Accumulate = true;
 		bool enableRayTracing = true;
-		bool enableShadows = true;
+		bool enableShadows = false;
 		bool applyTexture = true;
 		int bounces = 0;
 	};

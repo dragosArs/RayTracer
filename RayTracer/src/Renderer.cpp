@@ -154,105 +154,6 @@ void Renderer::Debug(const Scene& scene, const Camera& camera)
 }
 
 
-
-
-
-void Renderer::RasterizeLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color, std::unordered_map<Coord, float>& zBuffer)
-{
-	//std::cout << "start: " << start.x << " " << start.y << "\n";
-	//std::cout << "end: " << end.x << " " << end.y << "\n";
-	int width = m_finalImage->GetWidth() - 1;
-	int height = m_finalImage->GetHeight() - 1;
-	Coord startClamped = Coord{ -1, -1 };
-	Coord endClamped = Coord{ -1, -1};
-
-	int dx = end.x - start.x;
-	int dy = end.y - start.y;
-	float p[4] = { -dx, dx, -dy, dy };
-	float q[4] = { start.x, width - start.x, start.y, height - start.y };
-
-	float t1 = 0.0f;
-	float t2 = 1.0f;
-
-	for (int i = 0; i < 4; i++)
-	{
-		if (p[i] == 0.0f && q[i] < 0.0f)
-			return;
-		if (p[i] < 0.0f)
-		{
-			float t = (q[i]) / (p[i]);  // This calculation was returning a zero because both q and p were int
-			if (t > t1 && t < t2)
-			{
-				t1 = t;
-			}
-		}
-		else if (p[i] > 0.0f)
-		{
-			float t = (q[i]) / (p[i]);  // This calculation was returning a zero because both q and p were int
-			if (t > t1 && t < t2)
-			{
-				t2 = t;
-			}
-		}
-	}
-
-	if (t1 < t2) {
-		startClamped = Coord{ (int)(start.x + t1 * dx), (int)(start.y + t1 * dy) };
-		endClamped = Coord{ (int)(start.x + t2 * dx), (int)(start.y + t2 * dy) };
-	}
-	else
-		return;
-
-	//std::cout << "startClamped: " << startClamped.x << " " << startClamped.y << "\n";
-	//std::cout << "endClamped: " << endClamped.x << " " << endClamped.y << "\n" << "\n";
-	dx = abs(endClamped.x - startClamped.x);
-	dy = abs(endClamped.y - startClamped.y);
-	int sx = (startClamped.x < endClamped.x) ? 1 : -1;
-	int sy = (startClamped.y < endClamped.y) ? 1 : -1;
-	int error = dx - dy;
-	float dist = glm::distance(glm::vec2(start.x, start.y), glm::vec2(end.x, end.y));
-	int x = startClamped.x;
-	int y = startClamped.y;
-
-	while (x != endClamped.x || y != endClamped.y) {
-		// Process the current point (x1, y1)
-		float t = glm::distance(glm::vec2(x, y), glm::vec2(startClamped.x, startClamped.y)) / dist;
-		float depth = t * start.z + (1 - t) * end.z;
-		if (x > 0 && x < width && y > 0 && y < height && (zBuffer.count(Coord{ x, y }) == 0 || depth < zBuffer[Coord{x, y}]))
-		{
-			zBuffer[Coord{ x, y }] = depth;
-			m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
-		}
-
-		int error2 = 2 * error;
-
-		// If the error is greater than zero, it means it's time
-		// to move vertically.
-		if (error2 > -dy) {
-			error -= dy;
-			x += sx;
-		}
-
-		// If the error is less than dx, it's time to move horizontally.
-		if (error2 < dx) {
-			error += dx;
-			y += sy;
-		}
-	}
-
-	// Process the final point (x2, y2)
-	float t = glm::distance(glm::vec2(x, y), glm::vec2(start.x, start.y)) / dist;
-	float depth = t * start.z + (1 - t) * end.z;
-	if (x > 0 && x < width && y > 0 && y < height && (zBuffer.count(Coord{ x, y }) == 0 || depth < zBuffer[Coord{ x, y }]))
-	{
-		zBuffer[Coord{ x, y }] = depth;
-		m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
-	}
-	
-	//std::cout << start.x << " " << start.y << " " << end.x << " " << end.y << "\n";
-}
-
-
 glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 {
 
@@ -267,10 +168,10 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	for (int i = 0; i <= m_settings.bounces; i++)
 	{
 		//"reset" ray
-		ray.t = -1.0f;
+		ray.t = 1000.f;
 		traceRay(ray, basicHitInfo, debug);
 		FullHitInfo fullHitInfo;
-		if (ray.t > EPSILON )
+		if (ray.t > EPSILON && ray.t < 1000.f)
 		{
 			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
 			//std::cout << fullHitInfo.material.kd.x << " " << fullHitInfo.material.kd.y << " " << fullHitInfo.material.kd.z << std::endl;
@@ -280,12 +181,12 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 
 			for (const PointLight& pointLight : m_activeScene->lightSources)
 			{
-				shadowRay.origin = fullHitInfo.position + 0.075f * fullHitInfo.normal + 100 * EPSILON * shadowRay.direction;
+				shadowRay.origin = fullHitInfo.position + EPSILON * fullHitInfo.normal;
 				float length = glm::length(pointLight.position - shadowRay.origin);
 				shadowRay.direction = glm::normalize(pointLight.position - shadowRay.origin);
 				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
-				if (!isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
+				if (!m_settings.enableShadows || !isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
 					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
 			}
 			
@@ -300,6 +201,179 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
 	return finalColor;
 }
+
+void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
+{
+	std::queue<const BVH*> queue;
+	queue.push(m_activeScene->bvh.get());
+
+	while (queue.size() > 0)
+	{
+		const BVH* cur = queue.front();
+		queue.pop();
+		const BVH* leftBvh = cur->left.get();
+		const BVH* rightBvh = cur->right.get();
+
+		if (leftBvh->triangleIndex == -1)
+		{
+			float dist = intersectAABB(ray, leftBvh->boundingBox, debug);
+			if (dist > 0 && dist < ray.t)
+				queue.push(leftBvh);
+		}
+		else {
+			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
+		}
+
+
+		if (rightBvh->triangleIndex == -1)
+		{
+			float dist = intersectAABB(ray, rightBvh->boundingBox, debug);
+			if (dist > 0 && dist < ray.t)
+				queue.push(rightBvh);
+		}
+		else {
+			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
+		}
+	}
+}
+
+
+//This function doesn't return anything, but changes ray.t and hitInfo
+//TODO
+//Can be more efficient by coding an early stop. If ray.t is smaller than the distance to the bounding box, then we don't need to check the triangles inside the bounding box
+//void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
+//{
+//	std::queue<const BVH*> queue;
+//	queue.push(m_activeScene->bvh.get());
+//
+//	while (queue.size() > 0) 
+//	{
+//		const BVH* cur = queue.front();
+//		queue.pop();
+//		const BVH* leftBvh = cur->left.get();
+//		const BVH* rightBvh = cur->right.get();
+//
+//		if (leftBvh->triangleIndex == -1)
+//		{
+//			if (intersectAABB(ray, leftBvh->boundingBox, debug))
+//				queue.push(leftBvh);
+//		}
+//		else {
+//			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
+//		}
+//		
+//
+//		if (rightBvh->triangleIndex == -1)
+//		{
+//			if (intersectAABB(ray, rightBvh->boundingBox, debug))
+//				queue.push(rightBvh);
+//		}
+//		else {
+//			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
+//		}
+//	}
+//}
+
+
+bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex) 
+{
+	std::queue<const BVH*> queue;
+	queue.push(m_activeScene->bvh.get());
+
+	while (queue.size() > 0) {
+		const BVH* cur = queue.front();
+		queue.pop();
+		const BVH* leftBvh = cur->left.get();
+		const BVH* rightBvh = cur->right.get();
+		//delete cur;
+
+		if (leftBvh->triangleIndex == -1)
+		{
+			if (intersectAABB(ray, leftBvh->boundingBox, debug) > 0)
+				queue.push(leftBvh);
+		}
+		else if (leftBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length, debug))
+		{
+			return true;
+		}
+
+		if (rightBvh->triangleIndex == -1)
+		{
+			if (intersectAABB(ray, rightBvh->boundingBox, debug) > 0)
+				queue.push(rightBvh);
+		}
+		else if (rightBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length, debug))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+//TODO
+//Apply bilinear interpolation here
+FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray)
+{
+	Triangle triangle = scene->triangles[basicHitInfo.triangleIndex];
+	Vertex v0 = scene->vertices[triangle.vertexIndex0];
+	Vertex v1 = scene->vertices[triangle.vertexIndex1];
+	Vertex v2 = scene->vertices[triangle.vertexIndex2];
+	float u = basicHitInfo.barU;
+	float v = basicHitInfo.barV;
+	glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
+	glm::vec3 normal;
+	if(v0.normal == glm::vec3{0.0f} || v1.normal == glm::vec3{0.0f} || v2.normal == glm::vec3{0.0f})
+		normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+	else
+		normal = glm::normalize((1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal);
+	Material mat = scene->materials[triangle.materialIndex];
+	if (m_settings.applyTexture)
+	{
+		glm::vec2 pixelCoord = (1 - u - v) * v0.texCoord + u * v1.texCoord + v * v2.texCoord;
+		if(mat.diffuseMapIndex >= 0)
+			mat.kd = applyBilinearInterpolation(pixelCoord, scene->diffuseMaps[mat.diffuseMapIndex]);
+		/*if (mat.normalMapIndex >= 0)
+			normal = applyBilinearInterpolation(pixelCoord, scene->normalMaps[mat.normalMapIndex]);*/
+	}
+	
+		
+	return FullHitInfo{ hitPos, normal, mat };
+}
+
+glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, const Texture& texture)
+{
+
+	float texelX = fmod(pixelCoord.x * (texture.width - 1), texture.width);
+	float texelY = fmod(pixelCoord.y * (texture.height - 1), texture.height);
+	if(texelX < 0)
+		texelX += texture.width;
+	if (texelY < 0)
+		texelY += texture.height;
+
+	// Convert to image coordinates
+	int x0 = static_cast<int>(texelX);
+	int y0 = static_cast<int>(texelY);
+	int x1 = x0 < texture.width - 1 ? x0 + 1 : x0;
+	int y1 = y0 < texture.height - 1 ? y0 + 1 : y0;
+
+	float u = texelX - x0;
+	float v = texelY - y0;
+	
+	int tl = y0 * texture.width + x0;
+	int tr = y0 * texture.width + x1;
+	int bl = y1 * texture.width + x0;
+	int br = y1 * texture.width + x1;
+
+	glm::vec3 colorTl = texture.pixels[tl];
+	glm::vec3 colorTr = texture.pixels[tr];
+	glm::vec3 colorBl = texture.pixels[bl];
+	glm::vec3 colorBr = texture.pixels[br];
+
+	glm::vec3 color = (1 - u) * (1 - v) * colorTl + u * (1 - v) * colorTr + (1 - u) * v * colorBl + u * v * colorBr;
+	return color;
+}
+
 
 
 std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(uint32_t x, uint32_t y)
@@ -355,144 +429,99 @@ std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(ui
 }
 
 
-//This function doesn't return anything, but changes ray.t and hitInfo
-//TODO
-//Can be more efficient by coding an early stop. If ray.t is smaller than the distance to the bounding box, then we don't need to check the triangles inside the bounding box
-void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
+void Renderer::RasterizeLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color, std::unordered_map<Coord, float>& zBuffer)
 {
-	std::queue<const BVH*> queue;
-	queue.push(m_activeScene->bvh.get());
+	//std::cout << "start: " << start.x << " " << start.y << "\n";
+	//std::cout << "end: " << end.x << " " << end.y << "\n";
+	int width = m_finalImage->GetWidth() - 1;
+	int height = m_finalImage->GetHeight() - 1;
+	Coord startClamped = Coord{ -1, -1 };
+	Coord endClamped = Coord{ -1, -1 };
 
-	while (queue.size() > 0) 
+	int dx = end.x - start.x;
+	int dy = end.y - start.y;
+	float p[4] = { -dx, dx, -dy, dy };
+	float q[4] = { start.x, width - start.x, start.y, height - start.y };
+
+	float t1 = 0.0f;
+	float t2 = 1.0f;
+
+	for (int i = 0; i < 4; i++)
 	{
-		const BVH* cur = queue.front();
-		queue.pop();
-		const BVH* leftBvh = cur->left.get();
-		const BVH* rightBvh = cur->right.get();
-
-		if (leftBvh->triangleIndex == -1)
+		if (p[i] == 0.0f && q[i] < 0.0f)
+			return;
+		if (p[i] < 0.0f)
 		{
-			if (intersectAABB(ray, leftBvh->boundingBox, debug))
-				queue.push(leftBvh);
+			float t = (q[i]) / (p[i]);  // This calculation was returning a zero because both q and p were int
+			if (t > t1 && t < t2)
+			{
+				t1 = t;
+			}
 		}
-		else {
-			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
-		}
-		
-
-		if (rightBvh->triangleIndex == -1)
+		else if (p[i] > 0.0f)
 		{
-			if (intersectAABB(ray, rightBvh->boundingBox, debug))
-				queue.push(rightBvh);
-		}
-		else {
-			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
-		}
-	}
-}
-
-
-bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex) 
-{
-	std::queue<const BVH*> queue;
-	queue.push(m_activeScene->bvh.get());
-
-	while (queue.size() > 0) {
-		const BVH* cur = queue.front();
-		queue.pop();
-		const BVH* leftBvh = cur->left.get();
-		const BVH* rightBvh = cur->right.get();
-		//delete cur;
-
-		if (leftBvh->triangleIndex == -1)
-		{
-			if (intersectAABB(ray, leftBvh->boundingBox, debug))
-				queue.push(leftBvh);
-		}
-		else if (leftBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length, debug))
-		{
-			//std::lock_guard<std::mutex> lock(coutMutex);
-			//std::cout << "Current triangle index: " << leftBvh->triangleIndex << ", Original triangle index: " << originalTriangleIndex << "\n";
-			return true;
-		}
-
-		if (rightBvh->triangleIndex == -1)
-		{
-			if (intersectAABB(ray, rightBvh->boundingBox, debug))
-				queue.push(rightBvh);
-		}
-		else if (rightBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length, debug))
-		{
-			//std::lock_guard<std::mutex> lock(coutMutex);
-			//std::cout << "Current triangle index: " << rightBvh->triangleIndex << ", Original triangle index: " << originalTriangleIndex << "\n";
-			return true;
+			float t = (q[i]) / (p[i]);  // This calculation was returning a zero because both q and p were int
+			if (t > t1 && t < t2)
+			{
+				t2 = t;
+			}
 		}
 	}
 
-	return false;
-}
-
-//TODO
-//Apply bilinear interpolation here
-FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray)
-{
-	Triangle triangle = scene->triangles[basicHitInfo.triangleIndex];
-	Vertex v0 = scene->vertices[triangle.vertexIndex0];
-	Vertex v1 = scene->vertices[triangle.vertexIndex1];
-	Vertex v2 = scene->vertices[triangle.vertexIndex2];
-	float u = basicHitInfo.barU;
-	float v = basicHitInfo.barV;
-	glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
-	glm::vec3 normal;
-	if(v0.normal == glm::vec3{0.0f} || v1.normal == glm::vec3{0.0f} || v2.normal == glm::vec3{0.0f})
-		normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+	if (t1 < t2) {
+		startClamped = Coord{ (int)(start.x + t1 * dx), (int)(start.y + t1 * dy) };
+		endClamped = Coord{ (int)(start.x + t2 * dx), (int)(start.y + t2 * dy) };
+	}
 	else
-		normal = glm::normalize((1 - u - v) * v0.normal + u * v1.normal +  v * v2.normal);
-	Material mat = scene->materials[triangle.materialIndex];
-	if (m_settings.applyTexture)
-	{
-		glm::vec2 pixelCoord = (1 - u - v) * v0.texCoord + u * v1.texCoord + v * v2.texCoord;
-		if(mat.diffuseMapIndex >= 0)
-			mat.kd = applyBilinearInterpolation(pixelCoord, scene->diffuseMaps[mat.diffuseMapIndex]);
-		if (mat.normalMapIndex >= 0)
-			normal = applyBilinearInterpolation(pixelCoord, scene->normalMaps[mat.normalMapIndex]);
+		return;
+
+	//std::cout << "startClamped: " << startClamped.x << " " << startClamped.y << "\n";
+	//std::cout << "endClamped: " << endClamped.x << " " << endClamped.y << "\n" << "\n";
+	dx = abs(endClamped.x - startClamped.x);
+	dy = abs(endClamped.y - startClamped.y);
+	int sx = (startClamped.x < endClamped.x) ? 1 : -1;
+	int sy = (startClamped.y < endClamped.y) ? 1 : -1;
+	int error = dx - dy;
+	float dist = glm::distance(glm::vec2(start.x, start.y), glm::vec2(end.x, end.y));
+	int x = startClamped.x;
+	int y = startClamped.y;
+
+	while (x != endClamped.x || y != endClamped.y) {
+		// Process the current point (x1, y1)
+		float t = glm::distance(glm::vec2(x, y), glm::vec2(startClamped.x, startClamped.y)) / dist;
+		float depth = t * start.z + (1 - t) * end.z;
+		if (x > 0 && x < width && y > 0 && y < height && (zBuffer.count(Coord{ x, y }) == 0 || depth < zBuffer[Coord{ x, y }]))
+		{
+			zBuffer[Coord{ x, y }] = depth;
+			m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
+		}
+
+		int error2 = 2 * error;
+
+		// If the error is greater than zero, it means it's time
+		// to move vertically.
+		if (error2 > -dy) {
+			error -= dy;
+			x += sx;
+		}
+
+		// If the error is less than dx, it's time to move horizontally.
+		if (error2 < dx) {
+			error += dx;
+			y += sy;
+		}
 	}
-	
-		
-	return FullHitInfo{ hitPos, normal, mat };
-}
 
-glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, const Texture& texture)
-{
+	// Process the final point (x2, y2)
+	float t = glm::distance(glm::vec2(x, y), glm::vec2(start.x, start.y)) / dist;
+	float depth = t * start.z + (1 - t) * end.z;
+	if (x > 0 && x < width && y > 0 && y < height && (zBuffer.count(Coord{ x, y }) == 0 || depth < zBuffer[Coord{ x, y }]))
+	{
+		zBuffer[Coord{ x, y }] = depth;
+		m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(color);
+	}
 
-	float texelX = fmod(pixelCoord.x * (texture.width - 1), texture.width);
-	float texelY = fmod(pixelCoord.y * (texture.height - 1), texture.height);
-	if(texelX < 0)
-		texelX += texture.width;
-	if (texelY < 0)
-		texelY += texture.height;
-
-	// Convert to image coordinates
-	int x0 = static_cast<int>(texelX);
-	int y0 = static_cast<int>(texelY);
-	int x1 = x0 < texture.width - 1 ? x0 + 1 : x0;
-	int y1 = y0 < texture.height - 1 ? y0 + 1 : y0;
-
-	float u = texelX - x0;
-	float v = texelY - y0;
-	
-	int tl = y0 * texture.width + x0;
-	int tr = y0 * texture.width + x1;
-	int bl = y1 * texture.width + x0;
-	int br = y1 * texture.width + x1;
-
-	glm::vec3 colorTl = texture.pixels[tl];
-	glm::vec3 colorTr = texture.pixels[tr];
-	glm::vec3 colorBl = texture.pixels[bl];
-	glm::vec3 colorBr = texture.pixels[br];
-
-	glm::vec3 color = (1 - u) * (1 - v) * colorTl + u * (1 - v) * colorTr + (1 - u) * v * colorBl + u * v * colorBr;
-	return color;
+	//std::cout << start.x << " " << start.y << " " << end.x << " " << end.y << "\n";
 }
 
 

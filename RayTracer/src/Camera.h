@@ -17,6 +17,7 @@ public:
 	const glm::mat4& GetInverseView() const { return m_InverseView; }
 	const glm::vec3& GetPosition() const { return m_Position; }
 	const glm::vec3& GetDirection() const { return m_ForwardDirection; }
+	const float GetFarClip() const { return m_FarClip; }
 	void SetPosition(const glm::vec3& position) { m_Position = position; RecalculateView(); RecalculateRayDirections(); }
 	void SetDirection(const glm::vec3& direction) { m_ForwardDirection = direction; RecalculateView(); RecalculateRayDirections(); }
 	const std::vector<glm::vec3>& GetRayDirections() const { return m_RayDirections; }

@@ -182,7 +182,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			{
 				shadowRay.origin = fullHitInfo.position + EPSILON * fullHitInfo.normal;
 				float length = glm::length(pointLight.position - shadowRay.origin);
-				shadowRay.direction = glm::normalize(pointLight.position - shadowRay.origin);
+				shadowRay.direction = (pointLight.position - shadowRay.origin) / length;
 				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
 				if (!m_settings.enableShadows || !isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
@@ -190,7 +190,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			}
 			
 			if (fullHitInfo.material.ks != glm::vec3{0.0f})
-				reflectiveContribution = fullHitInfo.material.ks * reflectiveContribution;
+				reflectiveContribution *=  reflectiveContribution;
 			else
 				break;
 		}  
@@ -215,23 +215,23 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 
 		if (leftBvh->triangleIndex == -1)
 		{
-			float dist = intersectAABB(ray, leftBvh->boundingBox, debug);
+			float dist = intersectAABB(ray, leftBvh->boundingBox);
 			if (dist > 0 && dist < ray.t)
 				stack.push(leftBvh);
 		}
 		else {
-			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex, debug);
+			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex);
 		}
 
 
 		if (rightBvh->triangleIndex == -1)
 		{
-			float dist = intersectAABB(ray, rightBvh->boundingBox, debug);
+			float dist = intersectAABB(ray, rightBvh->boundingBox);
 			if (dist > 0 && dist < ray.t)
 				stack.push(rightBvh);
 		}
 		else {
-			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex, debug);
+			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex);
 		}
 	}
 }
@@ -247,24 +247,23 @@ bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t ori
 		stack.pop();
 		const BVH* leftBvh = cur->left.get();
 		const BVH* rightBvh = cur->right.get();
-		//delete cur;
 
 		if (leftBvh->triangleIndex == -1)
 		{
-			if (intersectAABB(ray, leftBvh->boundingBox, debug) > 0)
+			if (intersectAABB(ray, leftBvh->boundingBox) > 0)
 				stack.push(leftBvh);
 		}
-		else if (leftBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length, debug))
+		else if (leftBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length))
 		{
 			return true;
 		}
 
 		if (rightBvh->triangleIndex == -1)
 		{
-			if (intersectAABB(ray, rightBvh->boundingBox, debug) > 0)
+			if (intersectAABB(ray, rightBvh->boundingBox) > 0)
 				stack.push(rightBvh);
 		}
-		else if (rightBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length, debug))
+		else if (rightBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length))
 		{
 			return true;
 		}
@@ -273,17 +272,15 @@ bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t ori
 	return false;
 }
 
-//TODO
-//Apply bilinear interpolation here
 FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray)
 {
-	Triangle triangle = scene->triangles[basicHitInfo.triangleIndex];
-	Vertex v0 = scene->vertices[triangle.vertexIndex0];
-	Vertex v1 = scene->vertices[triangle.vertexIndex1];
-	Vertex v2 = scene->vertices[triangle.vertexIndex2];
+	const Triangle& triangle = scene->triangles[basicHitInfo.triangleIndex];
+	const Vertex& v0 = scene->vertices[triangle.vertexIndex0];
+	const Vertex& v1 = scene->vertices[triangle.vertexIndex1];
+	const Vertex& v2 = scene->vertices[triangle.vertexIndex2];
 	float u = basicHitInfo.barU;
 	float v = basicHitInfo.barV;
-	glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
+	const glm::vec3 hitPos = ray.origin + ray.t * ray.direction;
 	glm::vec3 normal;
 	if(v0.normal == glm::vec3{0.0f} || v1.normal == glm::vec3{0.0f} || v2.normal == glm::vec3{0.0f})
 		normal = glm::normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));

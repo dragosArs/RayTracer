@@ -1,7 +1,7 @@
 #include "Scene.h"
 #include "../../Walnut/vendor/stb_image/stb_image.h"
 
-
+//std::mutex coutMutex;
 
 [[nodiscard]]
 void Scene::load(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath)
@@ -21,7 +21,21 @@ void Scene::load(const std::filesystem::path& objectFilePath, const std::filesys
 		createUniqueVertices(shape.mesh, result.attributes);
 	std::cout << diffuseMaps.size() << '\n';
 	std::cout << normalMaps.size() << '\n';
-	bvh = prepBvh(0, triangles.size() - 1, 0);	
+	AABB sceneBoundingBox;
+	sceneBoundingBox.lower = glm::vec3{ FLT_MAX, FLT_MAX, FLT_MAX };
+	sceneBoundingBox.upper = glm::vec3{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+	for (const Vertex& vertex : vertices)
+	{
+		sceneBoundingBox.lower.x = std::min(sceneBoundingBox.lower.x, vertex.position.x);
+		sceneBoundingBox.lower.y = std::min(sceneBoundingBox.lower.y, vertex.position.y);
+		sceneBoundingBox.lower.z = std::min(sceneBoundingBox.lower.z, vertex.position.z);
+
+		sceneBoundingBox.upper.x = std::max(sceneBoundingBox.upper.x, vertex.position.x);
+		sceneBoundingBox.upper.y = std::max(sceneBoundingBox.upper.y, vertex.position.y);
+		sceneBoundingBox.upper.z = std::max(sceneBoundingBox.upper.z, vertex.position.z);
+	}
+	bvh = prepBvh(0, triangles.size(), sceneBoundingBox);	
+	//bvh = prepBvh(0, triangles.size() - 1, 0);
 }
 
 void Scene::loadMaterials(const std::vector<rapidobj::Material>& rapidObjMaterials)
@@ -146,56 +160,157 @@ uint32_t Scene::getIndexOfVertex(const Key& key, const rapidobj::Attributes& att
 }
 
 
-std::unique_ptr<BVH> Scene::prepBvh(int left, int right, int level) {
-	if (level == 0)
+std::unique_ptr<BVH> Scene::prepBvh(int left, int right, const AABB& box) {
+
+	if (left == right - 1) {
+		AABB leafAABB = createAABBForTriangle(triangles[left], vertices);
+		return std::make_unique<BVH>(BVH{ leafAABB, left });//Leaf node
+	}
+	if (left == right)
+		std::cout << "sdfg\n";
+
+	size_t split = 0;
+	glm::vec3 boxSize = box.upper - box.lower;
+	glm::vec3 splitPointRight = box.lower;
+	glm::vec3 splitPointLeft = box.upper;
+	
+	if (boxSize.x > boxSize.y && boxSize.x > boxSize.z) {
 		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
-			return lhs.centroid.z < rhs.centroid.z;
-		});
-	else if(level == 1) 
-		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
-		return lhs.centroid.x < rhs.centroid.x;
-	});
-	else if (level == 2)
+			return lhs.centroid.x < rhs.centroid.x;
+			});
+		split = splitWithSAH(box, boxSize, splitPointLeft, splitPointRight, left, right, 0);
+	}	
+	else if (boxSize.y > boxSize.z) {
 		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
 			return lhs.centroid.y < rhs.centroid.y;
-	});
-
-	int mid = (left + right) / 2;
-	if (left != right)
-	{
-		std::unique_ptr<BVH> leftBvh = std::move(prepBvh(left, mid, (level + 1) % 3));
-		std::unique_ptr<BVH> rightBvh = std::move(prepBvh(mid + 1, right, (level + 1) % 3));
-		
-		float minX = std::min(leftBvh->boundingBox.lower.x, rightBvh->boundingBox.lower.x);
-		float minY = std::min(leftBvh->boundingBox.lower.y, rightBvh->boundingBox.lower.y);
-		float minZ = std::min(leftBvh->boundingBox.lower.z, rightBvh->boundingBox.lower.z);
-
-		float maxX = std::max(leftBvh->boundingBox.upper.x, rightBvh->boundingBox.upper.x);
-		float maxY = std::max(leftBvh->boundingBox.upper.y, rightBvh->boundingBox.upper.y);
-		float maxZ = std::max(leftBvh->boundingBox.upper.z, rightBvh->boundingBox.upper.z);
-		AABB mergedBox = AABB{ glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
-		
-		std::unique_ptr<BVH> bvh = std::make_unique<BVH>(BVH{ mergedBox, -1 });
-		bvh->left = std::move(leftBvh);
-		bvh->right = std::move(rightBvh);
-		return bvh;
+			});
+		split = splitWithSAH(box, boxSize, splitPointLeft, splitPointRight, left, right, 1);
 	}
-	else
-	{
-		Triangle& triangle = triangles[left];
-		float minX = std::min(vertices[triangle.vertexIndex0].position.x, std::min(vertices[triangle.vertexIndex1].position.x, vertices[triangle.vertexIndex2].position.x));
-		float minY = std::min(vertices[triangle.vertexIndex0].position.y, std::min(vertices[triangle.vertexIndex1].position.y, vertices[triangle.vertexIndex2].position.y));
-		float minZ = std::min(vertices[triangle.vertexIndex0].position.z, std::min(vertices[triangle.vertexIndex1].position.z, vertices[triangle.vertexIndex2].position.z));
+	else {
+		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
+			return lhs.centroid.z < rhs.centroid.z;
+			});
 		
-		float maxX = std::max(vertices[triangle.vertexIndex0].position.x, std::max(vertices[triangle.vertexIndex1].position.x, vertices[triangle.vertexIndex2].position.x));
-		float maxY = std::max(vertices[triangle.vertexIndex0].position.y, std::max(vertices[triangle.vertexIndex1].position.y, vertices[triangle.vertexIndex2].position.y));
-		float maxZ = std::max(vertices[triangle.vertexIndex0].position.z, std::max(vertices[triangle.vertexIndex1].position.z, vertices[triangle.vertexIndex2].position.z));
-
-		AABB mergedBox = AABB{ glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
-		std::unique_ptr<BVH> bvh = std::make_unique<BVH>(BVH{ mergedBox, left });
-		return bvh;
+		split = splitWithSAH(box, boxSize, splitPointLeft, splitPointRight, left, right, 2);
 	}
+
+	std::unique_ptr<BVH> leftBvh = std::move(prepBvh(left, split, AABB{ box.lower, splitPointLeft }));
+	std::unique_ptr<BVH> rightBvh = std::move(prepBvh(split, right, AABB{ splitPointRight, box.upper }));
+	AABB resBox = combineAABBs(leftBvh->boundingBox, rightBvh->boundingBox);
+	return std::make_unique<BVH>(BVH{ resBox, -1, std::move(leftBvh), std::move(rightBvh) });
+	
 }
+
+size_t Scene::splitWithSAH(const AABB& box, const glm::vec3& boxSize, glm::vec3& splitPointLeft, glm::vec3& splitPointRight, int left, int right, int axis)
+{
+	float traverse = box.lower[axis];
+	float binSize = boxSize[axis] / 16;
+	int iterate = left + 1;
+	int split = left + 1;
+	float minSah = FLT_MAX;
+	float sah = 0;
+	float binLength = boxSize[axis] / 16;
+	int otherAxis1 = (axis + 1) % 3;
+	int otherAxis2 = (axis + 2) % 3;
+	float P = boxSize[otherAxis1] * boxSize[otherAxis2];
+	float S = boxSize[otherAxis1] + boxSize[otherAxis2];
+	for (int i = 0; i < 16; ++i) {
+		while (iterate < right - 1 && traverse > triangles[iterate].centroid[axis])
+			iterate++;
+		sah = (P + S * (traverse - box.lower[axis])) * (iterate - left) 
+			+ (P + S * (box.upper[axis] - traverse)) * (right - iterate);
+		if (sah < minSah) {
+			minSah = sah;
+			split = iterate;
+			splitPointLeft[axis] = triangles[iterate].centroid[axis];
+			splitPointRight[axis] = triangles[iterate].centroid[axis];
+		}
+		traverse += binSize;
+	}
+
+	return split;
+}
+
+AABB createAABBForTriangle(const Triangle& triangle, std::vector<Vertex>& vertices)
+{
+	Vertex v0 = vertices[triangle.vertexIndex0];
+	Vertex v1 = vertices[triangle.vertexIndex1];
+	Vertex v2 = vertices[triangle.vertexIndex2];
+
+	float lowerX = std::min(v0.position.x, std::min(v1.position.x, v2.position.x));
+	float lowerY = std::min(v0.position.y, std::min(v1.position.y, v2.position.y));
+	float lowerZ = std::min(v0.position.z, std::min(v1.position.z, v2.position.z));
+
+	float upperX = std::max(v0.position.x, std::max(v1.position.x, v2.position.x));
+	float upperY = std::max(v0.position.y, std::max(v1.position.y, v2.position.y));
+	float upperZ = std::max(v0.position.z, std::max(v1.position.z, v2.position.z));
+
+	return AABB{ glm::vec3{lowerX, lowerY, lowerZ}, glm::vec3{upperX, upperY, upperZ} };
+}
+
+AABB combineAABBs(const AABB& box1, const AABB& box2)
+{
+	float lowerX = std::min(box1.lower.x, box2.lower.x);
+	float lowerY = std::min(box1.lower.y, box2.lower.y);
+	float lowerZ = std::min(box1.lower.z, box2.lower.z);
+
+	float upperX = std::max(box1.upper.x, box2.upper.x);
+	float upperY = std::max(box1.upper.y, box2.upper.y);
+	float upperZ = std::max(box1.upper.z, box2.upper.z);
+
+	return AABB{ glm::vec3{lowerX, lowerY, lowerZ}, glm::vec3{upperX, upperY, upperZ} };
+}
+
+//std::unique_ptr<BVH> Scene::prepBvh(int left, int right, int level) {
+//	if (level == 0)
+//		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
+//		return lhs.centroid.z < rhs.centroid.z;
+//			});
+//	else if (level == 1)
+//		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
+//		return lhs.centroid.x < rhs.centroid.x;
+//			});
+//	else if (level == 2)
+//		std::sort(triangles.begin() + left, triangles.begin() + right, [](const Triangle& lhs, const Triangle& rhs) {
+//		return lhs.centroid.y < rhs.centroid.y;
+//			});
+//
+//	int mid = (left + right) / 2;
+//	if (left != right)
+//	{
+//		std::unique_ptr<BVH> leftBvh = std::move(prepBvh(left, mid, (level + 1) % 3));
+//		std::unique_ptr<BVH> rightBvh = std::move(prepBvh(mid + 1, right, (level + 1) % 3));
+//
+//		float minX = std::min(leftBvh->boundingBox.lower.x, rightBvh->boundingBox.lower.x);
+//		float minY = std::min(leftBvh->boundingBox.lower.y, rightBvh->boundingBox.lower.y);
+//		float minZ = std::min(leftBvh->boundingBox.lower.z, rightBvh->boundingBox.lower.z);
+//
+//		float maxX = std::max(leftBvh->boundingBox.upper.x, rightBvh->boundingBox.upper.x);
+//		float maxY = std::max(leftBvh->boundingBox.upper.y, rightBvh->boundingBox.upper.y);
+//		float maxZ = std::max(leftBvh->boundingBox.upper.z, rightBvh->boundingBox.upper.z);
+//		AABB mergedBox = AABB{ glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
+//
+//		std::unique_ptr<BVH> bvh = std::make_unique<BVH>(BVH{ mergedBox, -1 });
+//		bvh->left = std::move(leftBvh);
+//		bvh->right = std::move(rightBvh);
+//		return bvh;
+//	}
+//	else
+//	{
+//		Triangle& triangle = triangles[left];
+//		float minX = std::min(vertices[triangle.vertexIndex0].position.x, std::min(vertices[triangle.vertexIndex1].position.x, vertices[triangle.vertexIndex2].position.x));
+//		float minY = std::min(vertices[triangle.vertexIndex0].position.y, std::min(vertices[triangle.vertexIndex1].position.y, vertices[triangle.vertexIndex2].position.y));
+//		float minZ = std::min(vertices[triangle.vertexIndex0].position.z, std::min(vertices[triangle.vertexIndex1].position.z, vertices[triangle.vertexIndex2].position.z));
+//
+//		float maxX = std::max(vertices[triangle.vertexIndex0].position.x, std::max(vertices[triangle.vertexIndex1].position.x, vertices[triangle.vertexIndex2].position.x));
+//		float maxY = std::max(vertices[triangle.vertexIndex0].position.y, std::max(vertices[triangle.vertexIndex1].position.y, vertices[triangle.vertexIndex2].position.y));
+//		float maxZ = std::max(vertices[triangle.vertexIndex0].position.z, std::max(vertices[triangle.vertexIndex1].position.z, vertices[triangle.vertexIndex2].position.z));
+//
+//		AABB mergedBox = AABB{ glm::vec3{minX, minY, minZ}, glm::vec3{maxX, maxY, maxZ} };
+//		std::unique_ptr<BVH> bvh = std::make_unique<BVH>(BVH{ mergedBox, left });
+//		return bvh;
+//	}
+//}
 
 std::vector<glm::vec3> loadTexture(std::shared_ptr<unsigned char> imageData, int width, int height, int numChannels)
 {

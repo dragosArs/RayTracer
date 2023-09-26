@@ -14,7 +14,7 @@
 #include <queue>
 #include <glm/gtc/type_ptr.hpp>
 
-//std::mutex coutMutex;
+
 namespace Utils
 {
 

@@ -64,9 +64,14 @@ struct Scene {
     void updateNormalMap(Material& material, const std::string& normal_texname, std::unordered_map<std::string, int>& texMap);
     void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes);
     uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::unordered_map<Key, int>& uniqueIndexKeys);
-    std::unique_ptr<BVH> prepBvh(int left, int right, int level);
+    std::unique_ptr<BVH> prepBvh(int left, int right, const AABB& box);
+    size_t Scene::splitWithSAH(const AABB& box, const glm::vec3& boxDimensions, glm::vec3& splitPointLeft, glm::vec3& splitPointRight, int left, int right, int axis);
+    //std::unique_ptr<BVH> Scene::prepBvh(int left, int right, int level);
 };
 
+
+AABB createAABBForTriangle(const Triangle& triangle, std::vector<Vertex>& vertices);
+AABB combineAABBs(const AABB& box1, const AABB& box2);
 std::vector<glm::vec3> loadTexture(std::shared_ptr<unsigned char> imageData, int width, int height, int numChannels);
 
 

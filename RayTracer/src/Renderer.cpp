@@ -80,14 +80,21 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 
 #else 
 	if (m_settings.enableRayTracing)
-	{
+	{		
 		std::for_each(std::execution::par, m_imageVerticalIter.begin(), m_imageVerticalIter.end(),
 			[this](uint32_t y)
 			{
 				std::for_each(std::execution::par, m_imageHorizontalIter.begin(), m_imageHorizontalIter.end(),
 				[this, y](uint32_t x)
 					{
-						m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(x, y, false));
+						Ray ray;
+						ray.origin = m_activeCamera->GetPosition();
+						ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
+						ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
+						if(m_settings.enableDepthOfFocus)
+							m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(accumulateForFocusEffect(ray));
+						else
+							m_imageData[x + y * m_finalImage->GetWidth()] = Utils::ConvertToRGBA(perPixel(ray));
 					});
 			});
 
@@ -155,22 +162,19 @@ void Renderer::Debug(const Scene& scene, const Camera& camera)
 }
 
 
-glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
+glm::vec3 Renderer::perPixel(Ray& ray)
 {
 
-	Ray ray;
-	Ray shadowRay;
-	ray.origin = m_activeCamera->GetPosition();
-	ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
-	ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
+	
 	glm::vec3 color = glm::vec3{ 0.0f };//ambient light
 	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
 	BasicHitInfo basicHitInfo;
+	Ray shadowRay;
 	for (int i = 0; i <= m_settings.bounces; i++)
 	{
 		//"reset" ray
 		ray.t = 1000.f;
-		traceRay(ray, basicHitInfo, debug);
+		traceRay(ray, basicHitInfo);
 		FullHitInfo fullHitInfo;
 		if (ray.t > EPSILON && ray.t < 1000.f)
 		{
@@ -187,7 +191,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 				shadowRay.direction = (pointLight.position - shadowRay.origin) / length;
 				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
-				if (!m_settings.enableShadows || !isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
+				if (!m_settings.enableShadows || !isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
 					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
 			}
 
@@ -200,7 +204,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 					shadowRay.direction = (samplePointLight.position - shadowRay.origin) / length;
 					shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
-					if (!m_settings.enableShadows || !isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
+					if (!m_settings.enableShadows || !isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
 						accumulatedColor += phongFull(fullHitInfo, *m_activeCamera, samplePointLight);
 				}
 				
@@ -219,7 +223,24 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 	return finalColor;
 }
 
-void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
+glm::vec3 Renderer::accumulateForFocusEffect(Ray& ray)
+{
+	glm::vec3 color = glm::vec3{ 0.0f };
+	glm::vec3 focalPoint = m_activeCamera->GetPosition() + m_activeCamera->focalLength * ray.direction;	
+	for (const glm::vec3& orig: m_activeCamera->GetFocusPositions())
+	{
+		ray.origin = orig;
+		ray.t = 1000.f;
+		//std::cout << ray.origin.x << " " << ray.origin.y << " " << ray.origin.z << "\n";
+		ray.direction = glm::normalize(focalPoint - orig);
+		ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
+		color += perPixel(ray);
+	}
+
+	return color / (float)m_settings.focusSamples;
+}
+
+void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 {
 	std::stack<const BVH*> stack;
 	stack.push(m_activeScene->bvh.get());
@@ -255,7 +276,7 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug)
 }
 
 
-bool Renderer::isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex) 
+bool Renderer::isInShadow(const Ray& ray, float length, uint32_t originalTriangleIndex) 
 {
 	std::stack<const BVH*> stack;
 	stack.push(m_activeScene->bvh.get());
@@ -366,7 +387,7 @@ std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(ui
 	{
 		//"reset" ray
 		ray.t = -1.0f;
-		traceRay(ray, basicHitInfo, true);
+		traceRay(ray, basicHitInfo);
 		color = glm::vec3{ 0.0f };
 		FullHitInfo fullHitInfo;
 		glm::vec3 rayOrigDebug = ray.origin;
@@ -386,7 +407,7 @@ std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(ui
 				shadowRay.direction = glm::normalize(pointLight.position - shadowRay.origin);
 				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
-				if (!isInShadow(shadowRay, length, true, basicHitInfo.triangleIndex))
+				if (!isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
 				{
 					color = phongFull(fullHitInfo, *m_activeCamera, pointLight);
 					debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{fullHitInfo.position, pointLight.position, glm::vec3{ 1.0f, 1.0f, 1.0f }});

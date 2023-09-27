@@ -20,7 +20,7 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 		
-#define SCENE 0
+#define SCENE 1
 #if SCENE
 		m_Scene.load("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl");
 		
@@ -34,7 +34,7 @@ public:
 			PointLight pointLight{};
 			pointLight.position = { 0.0f, 0.0f, 30.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
+			m_Scene.pointLightSources.push_back(pointLight);
 		}
 #else
 		m_Camera.SetPosition({ 0.0f, 1.0f, -5.0f });
@@ -94,7 +94,12 @@ public:
 		ImGui::Checkbox("Enable shadows", &m_Renderer.GetSettings().enableShadows);
 		ImGui::Checkbox("Apply texture(defaults to bilinear interpolation)", &m_Renderer.GetSettings().applyTexture);
 		ImGui::SliderInt("Number of bounces(default is 1)", &m_Renderer.GetSettings().bounces, 0, 10);
-		ImGui::SliderInt("Number of light samples(default is 1)", &m_Renderer.GetSettings().lightSamples, 1, 10);
+		ImGui::SliderInt("Number of light samples(default is 3)", &m_Renderer.GetSettings().lightSamples, 1, 10);
+		ImGui::Checkbox("Enable depth of focus", &m_Renderer.GetSettings().enableDepthOfFocus);
+		ImGui::SliderFloat("Aperture", &m_Camera.aperture, 0.0f, 1.0f);
+		ImGui::SliderFloat("Focal length", &m_Camera.focalLength, m_Camera.GetNearClip(), m_Camera.GetFarClip());
+		ImGui::SliderInt("Focus samples", &m_Renderer.GetSettings().focusSamples, 3, 10);
+		
 
 		ImGui::End();
 
@@ -121,6 +126,7 @@ public:
 		m_Scene.sampleAreaLights(m_Renderer.GetSettings().lightSamples);
 		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
+		m_Camera.sampleFocusJitter(m_Renderer.GetSettings().focusSamples);
 		m_Renderer.Render(m_Scene, m_Camera);
 		m_LastRenderTime = timer.ElapsedMillis();
 	}

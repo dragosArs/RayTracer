@@ -150,6 +150,21 @@ void Camera::RecalculateRayDirections()
 	}
 }
 
+void Camera::sampleFocusJitter(int samples)
+{
+	m_FocusPositions.clear();
+	//TODO CHANGE THIS
+	constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
+	glm::vec3 jitter = glm::cross(m_ForwardDirection, upDirection);
+	glm::quat rotation = glm::angleAxis(glm::radians(360.0f / samples), m_ForwardDirection);
+
+	for (int i = 0; i < samples; i++)
+	{
+		jitter = rotation * jitter;
+		m_FocusPositions.push_back(m_Position + aperture * jitter);
+	}
+}
+
 const std::pair<glm::vec3, glm::vec3> Camera::ProjectLineOnScreen(std::pair<glm::vec3, glm::vec3> line) const
 {
 	glm::vec4 viewport = glm::vec4(0, 0, m_ViewportWidth, m_ViewportHeight);

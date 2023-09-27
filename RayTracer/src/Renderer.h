@@ -41,6 +41,10 @@ public:
 		bool enableRayTracing = true;
 		bool enableShadows = false;
 		bool applyTexture = true;
+		bool enableDepthOfFocus = false;
+		float aperture = 0.0f;
+		float focalLength = 0.0f;
+		int focusSamples = 4;
 		int lightSamples = 3;
 		int bounces = 0;
 	};
@@ -65,10 +69,11 @@ public:
 	VisualDebugging& GetVisualDebugging() { return m_visualDebugging; }
 private:
 
-	glm::vec3 perPixel(uint32_t x, uint32_t y, bool debug); // RayGen
+	glm::vec3 perPixel(Ray& ray); // RayGen
+	glm::vec3 accumulateForFocusEffect(Ray& ray);
 	std::vector <std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugPixel(uint32_t x, uint32_t y);
-	void traceRay(Ray& ray, BasicHitInfo& hitInfo, bool debug);
-	bool isInShadow(const Ray& ray, float length, bool debug, uint32_t originalTriangleIndex);
+	void traceRay(Ray& ray, BasicHitInfo& hitInfo);
+	bool isInShadow(const Ray& ray, float length,  uint32_t originalTriangleIndex);
 	FullHitInfo retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray);
 	glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, const Texture& texture);
 

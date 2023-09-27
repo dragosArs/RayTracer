@@ -234,6 +234,29 @@ int Scene::splitWithSAH(const AABB& box, const glm::vec3& boxSize, glm::vec3& sp
 	return split;
 }
 
+void Scene::sampleAreaLights(int detail)
+{
+	for (ParallelogramLight& light : parallelogramLightSources)
+	{
+		light.samples.clear();
+		int numberOfSamples = detail * detail;
+		for (int i = 0; i < numberOfSamples; ++i)
+		{
+			PointLight samplePointLight{};
+			int x = i % detail;
+			int y = i / detail;
+			float u = (x + 0.5f) / detail;
+			float v = (y + 0.5f) / detail;
+			//cMutex.lock();
+			//std::cout << u << " " << v << "\n";
+			samplePointLight.position = light.v0 + u * light.edge1 + v * light.edge2;
+			samplePointLight.color = ((1 - u) * (1 - v) * light.color0 + (1 - u) * v * light.color1 + u * (1 - v) * light.color2 + u * v * light.color3);
+			light.samples.push_back(samplePointLight);
+		}
+	}
+
+}
+
 AABB createAABBForTriangle(const Triangle& triangle, std::vector<Vertex>& vertices)
 {
 	Vertex v0 = vertices[triangle.vertexIndex0];

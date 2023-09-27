@@ -118,7 +118,7 @@ public:
 	void Render()
 	{
 		Timer timer;
-
+		m_Scene.sampleAreaLights(m_Renderer.GetSettings().lightSamples);
 		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Renderer.Render(m_Scene, m_Camera);

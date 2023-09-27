@@ -194,19 +194,8 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			for (const ParallelogramLight& pl : m_activeScene->parallelogramLightSources)
 			{
 				glm::vec3 accumulatedColor = glm::vec3{ 0.0f };
-				int detail = m_settings.lightSamples;
-				int numberOfSamples = detail * detail;
-				PointLight samplePointLight{};
-				for (int i = 0; i < numberOfSamples; ++i)
+				for (const PointLight& samplePointLight: pl.samples)
 				{
-					int x = i % detail;
-					int y = i / detail;
-					float u = (x + 0.5f) / detail;
-					float v = (y + 0.5f) / detail;
-					//cMutex.lock();
-					//std::cout << u << " " << v << "\n";
-					samplePointLight.position = pl.v0 + u * pl.edge1 + v * pl.edge2;
-					samplePointLight.color = ((1 - u) * (1 - v) * pl.color0 + (1 - u) * v * pl.color1 + u * (1 - v) * pl.color2 + u * v * pl.color3);
 					float length = glm::length(samplePointLight.position - shadowRay.origin);
 					shadowRay.direction = (samplePointLight.position - shadowRay.origin) / length;
 					shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
@@ -215,7 +204,7 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 						accumulatedColor += phongFull(fullHitInfo, *m_activeCamera, samplePointLight);
 				}
 				
-				color += reflectiveContribution * accumulatedColor / (float)numberOfSamples;
+				color += reflectiveContribution * accumulatedColor / (float)pl.samples.size();
 			}
 			
 			if (fullHitInfo.material.ks != glm::vec3{0.0f})

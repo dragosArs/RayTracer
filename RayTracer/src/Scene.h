@@ -22,6 +22,7 @@ struct ParallelogramLight {
     glm::vec3 v0;
     glm::vec3 edge1, edge2;
     glm::vec3 color0, color1, color2, color3;
+    std::vector<PointLight> samples;
 };
  
 //struct ParallelogramLight {
@@ -72,7 +73,8 @@ struct Scene {
     void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes);
     uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::unordered_map<Key, int>& uniqueIndexKeys);
     std::unique_ptr<BVH> prepBvh(int left, int right, const AABB& box);
-    int Scene::splitWithSAH(const AABB& box, const glm::vec3& boxDimensions, glm::vec3& splitPointLeft, glm::vec3& splitPointRight, int left, int right, int axis);
+    int splitWithSAH(const AABB& box, const glm::vec3& boxDimensions, glm::vec3& splitPointLeft, glm::vec3& splitPointRight, int left, int right, int axis);
+    void sampleAreaLights(int detail);
     //std::unique_ptr<BVH> Scene::prepBvh(int left, int right, int level);
 };
 

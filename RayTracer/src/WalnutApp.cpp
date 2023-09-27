@@ -29,78 +29,36 @@ public:
 
 		m_Camera.SetDirection({ 0.0f, 0.0f, -1.0f });
 		m_Camera.SetPosition({ 0.0f, 0.0f, 25.0f });
-		/*
-		{
-			PointLight pointLight;
-			pointLight.position = { 0.0f, 35.0f, 0.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}
-
-		{
-			PointLight pointLight;
-			pointLight.position = { -3.0f, 5.0f, 20.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}
-
-		{
-			PointLight pointLight;
-			pointLight.position = { 0.0f, -20.0f, 0.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}
-		*/
+		
 		{
 			PointLight pointLight{};
 			pointLight.position = { 0.0f, 0.0f, 30.0f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.lightSources.push_back(pointLight);
 		}
-
-		/*{
-			PointLight pointLight;
-			pointLight.position = { 0.0f, 0.0f, -30.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}
-
-		{
-			PointLight pointLight;
-			pointLight.position = { 0.0f, 30.0f, 0.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}*/
-
-		/*{
-			PointLight pointLight;
-			pointLight.position = { 2.0f, 3.0f, -2.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}
-
-		{
-			PointLight pointLight;
-			pointLight.position = { -2.0f, 3.0f, 2.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}
-
-		{
-			PointLight pointLight;
-			pointLight.position = { -2.0f, 3.0f, -2.0f };
-			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
-		}*/
 #else
-		m_Camera.SetPosition({ 0.0f, 1.0f, -3.0f });
+		m_Camera.SetPosition({ 0.0f, 1.0f, -5.0f });
 		m_Camera.SetDirection({ 0.0f, 0.0f, 1.0f });
 		m_Scene.load("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl");
-		{
+		/*{
 			PointLight pointLight;
 			pointLight.position = { 0.005f, 1.98f, 0.0325f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
-			m_Scene.lightSources.push_back(pointLight);
+			m_Scene.pointLightSources.push_back(pointLight);
+		}*/
+
+		{
+			ParallelogramLight light{};
+			light.v0 = { 0.240000, 1.50000, -0.160000 };
+			light.edge1 = { 0.000000, 0.000000, 0.380000 };
+			light.edge2 = {-0.470000, 0.000000, 0.000000};
+			
+
+			light.color0 = { 1.0f, 1.0f, 1.0f };
+			light.color1 = {1.0f, 1.0f, 0.0f};
+			light.color2 = { 0.0f, 1.0f, 1.0f };
+			light.color3 = { 1.0f, 1.0f, 0.0f };
+			m_Scene.parallelogramLightSources.push_back(light);
 		}
 #endif
 		
@@ -136,6 +94,7 @@ public:
 		ImGui::Checkbox("Enable shadows", &m_Renderer.GetSettings().enableShadows);
 		ImGui::Checkbox("Apply texture(defaults to bilinear interpolation)", &m_Renderer.GetSettings().applyTexture);
 		ImGui::SliderInt("Number of bounces(default is 1)", &m_Renderer.GetSettings().bounces, 0, 10);
+		ImGui::SliderInt("Number of light samples(default is 1)", &m_Renderer.GetSettings().lightSamples, 1, 10);
 
 		ImGui::End();
 

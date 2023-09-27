@@ -41,6 +41,7 @@ public:
 		bool enableRayTracing = true;
 		bool enableShadows = false;
 		bool applyTexture = true;
+		int lightSamples = 3;
 		int bounces = 0;
 	};
 

@@ -15,6 +15,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <stack>
 
+std::mutex cMutex;
 namespace Utils
 {
 
@@ -178,15 +179,43 @@ glm::vec3 Renderer::perPixel(uint32_t x, uint32_t y, bool debug)
 			ray.origin =  fullHitInfo.position + EPSILON * ray.direction;
 			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
 
-			for (const PointLight& pointLight : m_activeScene->lightSources)
+			shadowRay.origin = fullHitInfo.position + EPSILON * fullHitInfo.normal;
+			for (const PointLight& pointLight : m_activeScene->pointLightSources)
 			{
-				shadowRay.origin = fullHitInfo.position + EPSILON * fullHitInfo.normal;
+				
 				float length = glm::length(pointLight.position - shadowRay.origin);
 				shadowRay.direction = (pointLight.position - shadowRay.origin) / length;
 				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
 				if (!m_settings.enableShadows || !isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
 					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
+			}
+
+			for (const ParallelogramLight& pl : m_activeScene->parallelogramLightSources)
+			{
+				glm::vec3 accumulatedColor = glm::vec3{ 0.0f };
+				int detail = m_settings.lightSamples;
+				int numberOfSamples = detail * detail;
+				PointLight samplePointLight{};
+				for (int i = 0; i < numberOfSamples; ++i)
+				{
+					int x = i % detail;
+					int y = i / detail;
+					float u = (x + 0.5f) / detail;
+					float v = (y + 0.5f) / detail;
+					//cMutex.lock();
+					//std::cout << u << " " << v << "\n";
+					samplePointLight.position = pl.v0 + u * pl.edge1 + v * pl.edge2;
+					samplePointLight.color = ((1 - u) * (1 - v) * pl.color0 + (1 - u) * v * pl.color1 + u * (1 - v) * pl.color2 + u * v * pl.color3);
+					float length = glm::length(samplePointLight.position - shadowRay.origin);
+					shadowRay.direction = (samplePointLight.position - shadowRay.origin) / length;
+					shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
+
+					if (!m_settings.enableShadows || !isInShadow(shadowRay, length, debug, basicHitInfo.triangleIndex))
+						accumulatedColor += phongFull(fullHitInfo, *m_activeCamera, samplePointLight);
+				}
+				
+				color += reflectiveContribution * accumulatedColor / (float)numberOfSamples;
 			}
 			
 			if (fullHitInfo.material.ks != glm::vec3{0.0f})
@@ -333,8 +362,6 @@ glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, cons
 	return color;
 }
 
-
-
 std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(uint32_t x, uint32_t y)
 {
 	std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugLines;
@@ -363,7 +390,7 @@ std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(ui
 			ray.origin = fullHitInfo.position + EPSILON * ray.direction;
 			ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
 
-			for (const PointLight& pointLight : m_activeScene->lightSources)
+			for (const PointLight& pointLight : m_activeScene->pointLightSources)
 			{
 				shadowRay.origin = fullHitInfo.position + 0.075f * fullHitInfo.normal + 100 * EPSILON * shadowRay.direction;
 				float length = glm::length(pointLight.position - shadowRay.origin);

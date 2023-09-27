@@ -34,8 +34,7 @@ void Scene::load(const std::filesystem::path& objectFilePath, const std::filesys
 		sceneBoundingBox.upper.y = std::max(sceneBoundingBox.upper.y, vertex.position.y);
 		sceneBoundingBox.upper.z = std::max(sceneBoundingBox.upper.z, vertex.position.z);
 	}
-	bvh = prepBvh(0, triangles.size(), sceneBoundingBox);	
-	//bvh = prepBvh(0, triangles.size() - 1, 0);
+	bvh = prepBvh(0, triangles.size(), sceneBoundingBox);
 }
 
 void Scene::loadMaterials(const std::vector<rapidobj::Material>& rapidObjMaterials)
@@ -45,7 +44,6 @@ void Scene::loadMaterials(const std::vector<rapidobj::Material>& rapidObjMateria
 	for (const rapidobj::Material& material : rapidObjMaterials)
 	{
 		Material myMaterial;
-		//material.normal_texname.
 		//If a texture is specified in the material file, load it and add it to the scene
 		if (material.diffuse_texname != "") {
 			updateDiffuseMap(myMaterial, material.diffuse_texname, texMap);

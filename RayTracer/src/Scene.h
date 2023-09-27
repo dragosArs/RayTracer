@@ -19,10 +19,16 @@ struct SegmentLight {
 };
 
 struct ParallelogramLight {
-    glm::vec3 v0; // v0
-    glm::vec3 edge01, edge02; // edges from v0 to v1, and from v0 to v2
+    glm::vec3 v0;
+    glm::vec3 edge1, edge2;
     glm::vec3 color0, color1, color2, color3;
 };
+ 
+//struct ParallelogramLight {
+//    glm::vec3 v0; // v0
+//    glm::vec3 edge01, edge02; // edges from v0 to v1, and from v0 to v2
+//    glm::vec3 color0, color1, color2, color3;
+//};
 
 struct Key {
     uint32_t posIndex;
@@ -55,7 +61,8 @@ struct Scene {
     std::vector<Texture> normalMaps;
     std::vector<Triangle> triangles;
     std::unique_ptr<BVH> bvh;
-    std::vector<PointLight> lightSources;
+    std::vector<PointLight> pointLightSources;
+    std::vector<ParallelogramLight> parallelogramLightSources;
 
     // Load a prebuilt scene.
     void load(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath);

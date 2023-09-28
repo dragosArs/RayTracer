@@ -136,7 +136,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	}
 	if (m_visualDebugging.enableWireframeBvh)
 	{
-		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawBvh(scene.bvh.get()))
+		for (const std::pair<glm::vec3, glm::vec3>& line3D : DrawBvh(scene.bvhTree.get()))
 		{
 			std::pair<glm::vec3, glm::vec3> line2D = camera.ProjectLineOnScreen(line3D);
 			if (line2D.first.z != -std::numeric_limits<double>::infinity() && line2D.second.z != -std::numeric_limits<double>::infinity()
@@ -242,71 +242,66 @@ glm::vec3 Renderer::accumulateForFocusEffect(Ray& ray)
 
 void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 {
-	std::stack<const BVH*> stack;
-	stack.push(m_activeScene->bvh.get());
-
+	std::stack<int> stack;
+	stack.push(0);
+	const std::vector<bvhNode>& flatBvh = m_activeScene->flatBvh;
 	while (stack.size() > 0)
 	{
-		const BVH* cur = stack.top();
+		const int curIndex = stack.top();
+		const bvhNode& curNode = flatBvh[curIndex];
 		stack.pop();
-		const BVH* leftBvh = cur->left.get();
-		const BVH* rightBvh = cur->right.get();
-
-		if (leftBvh->triangleIndex == -1)
+		
+		if (curNode.isLeaf)
 		{
-			float dist = intersectAABB(ray, leftBvh->boundingBox);
-			if (dist > 0 && dist < ray.t)
-				stack.push(leftBvh);
+			for(int i = curNode.leftOffset; i <= curNode.rightOffset; i++)
+				intersectTriangle(ray, hitInfo, *m_activeScene, i);
 		}
 		else {
-			intersectTriangle(ray, hitInfo, *m_activeScene, leftBvh->triangleIndex);
-		}
-
-
-		if (rightBvh->triangleIndex == -1)
-		{
-			float dist = intersectAABB(ray, rightBvh->boundingBox);
+			const bvhNode& leftChild = flatBvh[curNode.leftOffset];
+			const bvhNode& rightChild = flatBvh[curNode.rightOffset];
+			float dist = intersectAABB(ray, leftChild.boundingBox);
 			if (dist > 0 && dist < ray.t)
-				stack.push(rightBvh);
-		}
-		else {
-			intersectTriangle(ray, hitInfo, *m_activeScene, rightBvh->triangleIndex);
+				stack.push(curNode.leftOffset);
+			dist = intersectAABB(ray, rightChild.boundingBox);
+			if (dist > 0 && dist < ray.t)
+				stack.push(curNode.rightOffset);
 		}
 	}
+	
 }
 
 
 bool Renderer::isInShadow(const Ray& ray, float length, uint32_t originalTriangleIndex) 
 {
-	std::stack<const BVH*> stack;
-	stack.push(m_activeScene->bvh.get());
-
-	while (stack.size() > 0) {
-		const BVH* cur = stack.top();
+	std::stack<int> stack;
+	stack.push(0);
+	const std::vector<bvhNode>& flatBvh = m_activeScene->flatBvh;
+	while (stack.size() > 0)
+	{
+		const int curIndex = stack.top();
+		const bvhNode curNode = flatBvh[curIndex];
 		stack.pop();
-		const BVH* leftBvh = cur->left.get();
-		const BVH* rightBvh = cur->right.get();
 
-		if (leftBvh->triangleIndex == -1)
+		if (curNode.isLeaf)
 		{
-			if (intersectAABB(ray, leftBvh->boundingBox) > 0)
-				stack.push(leftBvh);
+			for (int i = curNode.leftOffset; i <= curNode.rightOffset; i++)
+				if(i == originalTriangleIndex && intersectTriangle(ray, *m_activeScene, i, length))
+					return true;
 		}
-		else if (leftBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, leftBvh->triangleIndex, length))
-		{
-			return true;
-		}
-
-		if (rightBvh->triangleIndex == -1)
-		{
-			if (intersectAABB(ray, rightBvh->boundingBox) > 0)
-				stack.push(rightBvh);
-		}
-		else if (rightBvh->triangleIndex != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, rightBvh->triangleIndex, length))
-		{
-			return true;
+		else {
+			const bvhNode leftChild = flatBvh[curNode.leftOffset];
+			const bvhNode rightChild = flatBvh[curNode.rightOffset];
+			float dist = intersectAABB(ray, leftChild.boundingBox);
+			if (dist > 0)
+				stack.push(curNode.leftOffset);
+			dist = intersectAABB(ray, rightChild.boundingBox);
+			if (dist > 0)
+				stack.push(curNode.rightOffset);
+			
 		}
 	}
+
+
 
 	return false;
 }

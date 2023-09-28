@@ -38,7 +38,7 @@ public:
 	struct Settings
 	{
 		bool Accumulate = true;
-		bool enableRayTracing = true;
+		bool enableRayTracing = false;
 		bool enableShadows = false;
 		bool applyTexture = true;
 		bool enableDepthOfFocus = false;

@@ -61,7 +61,8 @@ struct Scene {
     std::vector<Texture> diffuseMaps;
     std::vector<Texture> normalMaps;
     std::vector<Triangle> triangles;
-    std::unique_ptr<BVH> bvh;
+    std::unique_ptr<BVH> bvhTree;
+    std::vector<bvhNode> flatBvh;
     std::vector<PointLight> pointLightSources;
     std::vector<ParallelogramLight> parallelogramLightSources;
 
@@ -73,6 +74,7 @@ struct Scene {
     void createUniqueVertices(const rapidobj::Mesh& mesh, const rapidobj::Attributes& attributes);
     uint32_t getIndexOfVertex(const Key& key, const rapidobj::Attributes& attributes, std::unordered_map<Key, int>& uniqueIndexKeys);
     std::unique_ptr<BVH> prepBvh(int left, int right, const AABB& box);
+    void  Scene::flattenBvh(const std::unique_ptr<BVH>& bvhTree, std::vector<bvhNode>& flatBvh);
     int splitWithSAH(const AABB& box, const glm::vec3& boxDimensions, glm::vec3& splitPointLeft, glm::vec3& splitPointRight, int left, int right, int axis);
     void sampleAreaLights(int detail);
     //std::unique_ptr<BVH> Scene::prepBvh(int left, int right, int level);

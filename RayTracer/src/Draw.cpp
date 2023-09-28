@@ -39,10 +39,10 @@ std::vector<std::pair<glm::vec3, glm::vec3>> DrawBvh(const BVH* bvh)
 		BVH* leftBvh = cur->left.get();
 		BVH* rightBvh = cur->right.get();
 
-		if (leftBvh->triangleIndex == -1)
+		if (leftBvh != nullptr)
 			queue.push(leftBvh);
 
-		if (rightBvh->triangleIndex == -1)
+		if (rightBvh != nullptr)
 			queue.push(rightBvh);
 	}
 

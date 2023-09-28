@@ -20,7 +20,7 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 		
-#define SCENE 1
+#define SCENE 0
 #if SCENE
 		m_Scene.load("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl");
 		
@@ -37,17 +37,17 @@ public:
 			m_Scene.pointLightSources.push_back(pointLight);
 		}
 #else
-		m_Camera.SetPosition({ 0.0f, 1.0f, -5.0f });
+		m_Camera.SetPosition({ 0.0f, 1.0f, -3.0f });
 		m_Camera.SetDirection({ 0.0f, 0.0f, 1.0f });
 		m_Scene.load("\\assets\\objects\\CornellBox-Mirror-Rotated.obj", "\\assets\\materials\\CornellBox-Mirror-Rotated.mtl");
-		/*{
+		{
 			PointLight pointLight;
 			pointLight.position = { 0.005f, 1.98f, 0.0325f };
 			pointLight.color = { 1.0f, 1.0f, 1.0f };
 			m_Scene.pointLightSources.push_back(pointLight);
-		}*/
+		}
 
-		{
+		/*{
 			ParallelogramLight light{};
 			light.v0 = { 0.240000, 1.50000, -0.160000 };
 			light.edge1 = { 0.000000, 0.000000, 0.380000 };
@@ -59,7 +59,7 @@ public:
 			light.color2 = { 0.0f, 1.0f, 1.0f };
 			light.color3 = { 1.0f, 1.0f, 0.0f };
 			m_Scene.parallelogramLightSources.push_back(light);
-		}
+		}*/
 #endif
 		
 		

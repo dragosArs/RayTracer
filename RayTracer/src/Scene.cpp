@@ -1,7 +1,10 @@
 #include "Scene.h"
 #include "../../Walnut/vendor/stb_image/stb_image.h"
+#include <stack>
+#include <queue>
+#include <Mtx.h>
 
-//std::mutex coutMutex;
+std::mutex mutex;
 
 [[nodiscard]]
 void Scene::load(const std::filesystem::path& objectFilePath, const std::filesystem::path& materialFilePath)
@@ -19,8 +22,8 @@ void Scene::load(const std::filesystem::path& objectFilePath, const std::filesys
 	loadMaterials(result.materials);
 	for (const rapidobj::Shape& shape : result.shapes)
 		createUniqueVertices(shape.mesh, result.attributes);
-	std::cout << diffuseMaps.size() << '\n';
-	std::cout << normalMaps.size() << '\n';
+	/*std::cout << diffuseMaps.size() << '\n';
+	std::cout << normalMaps.size() << '\n';*/
 	AABB sceneBoundingBox;
 	sceneBoundingBox.lower = glm::vec3{ FLT_MAX, FLT_MAX, FLT_MAX };
 	sceneBoundingBox.upper = glm::vec3{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
@@ -34,7 +37,15 @@ void Scene::load(const std::filesystem::path& objectFilePath, const std::filesys
 		sceneBoundingBox.upper.y = std::max(sceneBoundingBox.upper.y, vertex.position.y);
 		sceneBoundingBox.upper.z = std::max(sceneBoundingBox.upper.z, vertex.position.z);
 	}
-	bvh = prepBvh(0, triangles.size(), sceneBoundingBox);
+	bvhTree = prepBvh(0, triangles.size(), sceneBoundingBox);
+	std::vector<bvhNode*> aux;
+	flattenBvh(bvhTree, flatBvh);
+	//flatBvh.resize(aux.size());
+	//std::transform(aux.begin(), aux.end(), flatBvh.begin(), [](bvhNode* node) {return *node; });
+	for (const bvhNode& node : flatBvh)
+	{
+		std::cout << node.isLeaf << " " << node.leftOffset << " " << node.rightOffset << "\n";
+	}
 }
 
 void Scene::loadMaterials(const std::vector<rapidobj::Material>& rapidObjMaterials)
@@ -157,18 +168,31 @@ uint32_t Scene::getIndexOfVertex(const Key& key, const rapidobj::Attributes& att
 	return index;
 }
 
-
+void  Scene::flattenBvh(const std::unique_ptr<BVH>& bvhTree, std::vector<bvhNode>& flatBvh)
+{
+	const BVH* const bvh = bvhTree.get();
+	boolean isLeaf = bvh->left.get() == nullptr && bvh->right.get() == nullptr;
+	flatBvh.emplace_back(bvhNode{ bvh->boundingBox, bvh->leftOffset, bvh->rightOffset, isLeaf });
+	const int index = flatBvh.size() - 1;
+	if (!isLeaf)
+	{
+		flatBvh[index].leftOffset = flatBvh.size();
+		flattenBvh(bvhTree->left, flatBvh);
+		flatBvh[index].rightOffset = flatBvh.size();
+		flattenBvh(bvhTree->right, flatBvh);
+	}
+}
 std::unique_ptr<BVH> Scene::prepBvh(int left, int right, const AABB& box)
 {
 	//std::cout << "left: " << left << ", right: " << right << "\n";
 	if (left == right - 1)
 	{
 		AABB leafAABB = createAABBForTriangle(triangles[left], vertices);
-		return std::make_unique<BVH>(BVH{ leafAABB, left });//Leaf node
+		return std::make_unique<BVH>(BVH{ leafAABB, left, left });//Leaf node
 	}
 	
 
-	int split = 0;
+	int split = left;
 	glm::vec3 boxSize = box.upper - box.lower;
 	glm::vec3 splitPointRight = box.lower;
 	glm::vec3 splitPointLeft = box.upper;
@@ -195,11 +219,24 @@ std::unique_ptr<BVH> Scene::prepBvh(int left, int right, const AABB& box)
 		
 		split = splitWithSAH(box, boxSize, splitPointLeft, splitPointRight, left, right, 2);
 	}
-
-	std::unique_ptr<BVH> leftBvh = std::move(prepBvh(left, split, AABB{ box.lower, splitPointLeft }));
-	std::unique_ptr<BVH> rightBvh = std::move(prepBvh(split, right, AABB{ splitPointRight, box.upper }));
-	AABB resBox = combineAABBs(leftBvh->boundingBox, rightBvh->boundingBox);
-	return std::make_unique<BVH>(BVH{ resBox, -1, std::move(leftBvh), std::move(rightBvh) });
+	//BVH can be split further
+	if (split > left && split < right) {
+		std::unique_ptr<BVH> leftBvh = std::move(prepBvh(left, split, AABB{ box.lower, splitPointLeft }));
+		std::unique_ptr<BVH> rightBvh = std::move(prepBvh(split, right, AABB{ splitPointRight, box.upper }));
+		AABB resBox = combineAABBs(leftBvh->boundingBox, rightBvh->boundingBox);
+		return std::make_unique<BVH>(BVH{ resBox, leftBvh.get()->leftOffset, rightBvh.get()->rightOffset, std::move(leftBvh), std::move(rightBvh) });
+	}
+	//Because of SAH result BVH will not be split further, even though it contains multiple triangles
+	else {
+		AABB resBox{};
+		resBox.lower = glm::vec3{ FLT_MAX, FLT_MAX, FLT_MAX };
+		resBox.upper = glm::vec3{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+		for (int i = left; i < right; ++i)
+			resBox = combineAABBs(resBox, createAABBForTriangle(triangles[i], vertices));
+		return std::make_unique<BVH>(BVH{ resBox, left, right - 1 });
+	}
+	
+	
 	
 }
 
@@ -207,8 +244,9 @@ int Scene::splitWithSAH(const AABB& box, const glm::vec3& boxSize, glm::vec3& sp
 {
 	float traverse = box.lower[axis];
 	float binSize = boxSize[axis] / 16;
-	int iterate = left + 1;
-	int split = left + 1;
+	int iterate = left;
+	int split = left;
+	//float minSah = (boxSize[0] * boxSize[1] + boxSize[1] * boxSize[2] + boxSize[2] * boxSize[0]) * (right - left);
 	float minSah = FLT_MAX;
 	float sah = 0;
 	int otherAxis1 = (axis + 1) % 3;
@@ -217,7 +255,7 @@ int Scene::splitWithSAH(const AABB& box, const glm::vec3& boxSize, glm::vec3& sp
 	float S = boxSize[otherAxis1] + boxSize[otherAxis2];
 	for (int i = 0; i < 16; ++i)
 	{
-		while (iterate < right - 1 && traverse >= triangles[iterate].centroid[axis])
+		while (iterate < right && traverse >= triangles[iterate].centroid[axis])
 			iterate++;
 		sah = (P + S * (traverse - box.lower[axis])) * (iterate - left) 
 			+ (P + S * (box.upper[axis] - traverse)) * (right - iterate);
@@ -256,6 +294,8 @@ void Scene::sampleAreaLights(int detail)
 	}
 
 }
+
+
 
 AABB createAABBForTriangle(const Triangle& triangle, std::vector<Vertex>& vertices)
 {

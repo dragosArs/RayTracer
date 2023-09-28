@@ -40,12 +40,6 @@ void Scene::load(const std::filesystem::path& objectFilePath, const std::filesys
 	bvhTree = prepBvh(0, triangles.size(), sceneBoundingBox);
 	std::vector<bvhNode*> aux;
 	flattenBvh(bvhTree, flatBvh);
-	//flatBvh.resize(aux.size());
-	//std::transform(aux.begin(), aux.end(), flatBvh.begin(), [](bvhNode* node) {return *node; });
-	for (const bvhNode& node : flatBvh)
-	{
-		std::cout << node.isLeaf << " " << node.leftOffset << " " << node.rightOffset << "\n";
-	}
 }
 
 void Scene::loadMaterials(const std::vector<rapidobj::Material>& rapidObjMaterials)

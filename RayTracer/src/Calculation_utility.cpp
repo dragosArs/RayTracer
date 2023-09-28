@@ -13,23 +13,32 @@ float intersectAABB(const Ray& ray, const AABB& box)
     const float tNear = std::max(std::max(t1.x, t1.y), t1.z);
     const float tFar = std::min(std::min(t2.x, t2.y), t2.z);
 
-    if (tNear > tFar)
+
+
+    /*if (tNear > tFar)
         return -1.0f;
     else if (tNear > EPSILON)
         return tNear;
     else if (tFar > EPSILON)
         return tFar;
     else
+        return -1.0f;*/
+
+    if (tNear > tFar)
         return -1.0f;
+    else if (tNear > EPSILON)
+        return tNear;
+    else
+        return tFar;
 
 }
 
 void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, const uint32_t triangleId)
 {
     const Triangle& triangle = scene.triangles[triangleId];
-    const glm::vec3 posVertex0 = scene.vertices[triangle.vertexIndex0].position;
-    const glm::vec3 posVertex1 = scene.vertices[triangle.vertexIndex1].position;
-    const glm::vec3 posVertex2 = scene.vertices[triangle.vertexIndex2].position;
+    const glm::vec3& posVertex0 = scene.vertices[triangle.vertexIndex0].position;
+    const glm::vec3& posVertex1 = scene.vertices[triangle.vertexIndex1].position;
+    const glm::vec3& posVertex2 = scene.vertices[triangle.vertexIndex2].position;
     //glm::vec3 edge1, edge2, h, s, q;
     //float a, f, u, v;
     const glm::vec3 edge1 = posVertex1 - posVertex0;
@@ -67,9 +76,9 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
 bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triangleId, float length)
 {
     Triangle triangle = scene.triangles[triangleId];
-    const glm::vec3 posVertex0 = scene.vertices[triangle.vertexIndex0].position;
-    const glm::vec3 posVertex1 = scene.vertices[triangle.vertexIndex1].position;
-    const glm::vec3 posVertex2 = scene.vertices[triangle.vertexIndex2].position;
+    const glm::vec3& posVertex0 = scene.vertices[triangle.vertexIndex0].position;
+    const glm::vec3& posVertex1 = scene.vertices[triangle.vertexIndex1].position;
+    const glm::vec3& posVertex2 = scene.vertices[triangle.vertexIndex2].position;
     //const glm::vec3 edge1, edge2, h, s, q;
     //float a, f, u, v;
     const glm::vec3 edge1 = posVertex1 - posVertex0;
@@ -95,6 +104,12 @@ bool intersectTriangle(const Ray& ray, const Scene& scene, const uint32_t triang
 
     float t = f * glm::dot(edge2, q); 
     return t > EPSILON && t + EPSILON < length;
+}
+
+glm::vec3 normalizeDirection(const glm::vec3& direction)
+{
+    const float& length = glm::length(direction);
+    return length > EPSILON ? direction / length : direction;
 }
 
 

@@ -38,12 +38,10 @@ public:
 	struct Settings
 	{
 		bool Accumulate = true;
-		bool enableRayTracing = false;
+		bool enableRayTracing = true;
 		bool enableShadows = false;
 		bool applyTexture = true;
 		bool enableDepthOfFocus = false;
-		float aperture = 0.0f;
-		float focalLength = 0.0f;
 		int focusSamples = 4;
 		int lightSamples = 3;
 		int bounces = 0;

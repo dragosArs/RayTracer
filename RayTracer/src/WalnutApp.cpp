@@ -20,7 +20,7 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 		
-#define SCENE 0
+#define SCENE 1
 #if SCENE
 		m_Scene.load("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl");
 		

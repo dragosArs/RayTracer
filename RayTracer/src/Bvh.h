@@ -10,7 +10,7 @@ struct BVH {
 	std::unique_ptr<BVH> right = nullptr;
 };
 
-struct bvhNode {
+struct alignas(64) bvhNode {
 	AABB boundingBox;
 	int leftOffset;
 	int rightOffset;

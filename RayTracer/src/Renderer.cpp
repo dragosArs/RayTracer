@@ -180,14 +180,14 @@ glm::vec3 Renderer::perPixel(Ray& ray)
 		{
 			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
 			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
-			ray.origin =  fullHitInfo.position + EPSILON * ray.direction;
+			ray.origin =  fullHitInfo.position + EPSILON * fullHitInfo.normal;
 			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
 
 			shadowRay.origin = fullHitInfo.position + EPSILON * fullHitInfo.normal;
 			for (const PointLight& pointLight : m_activeScene->pointLightSources)
 			{
 				
-				float length = glm::length(pointLight.position - shadowRay.origin);
+				const float length = glm::length(pointLight.position - shadowRay.origin);
 				shadowRay.direction = (pointLight.position - shadowRay.origin) / length;
 				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
@@ -198,9 +198,10 @@ glm::vec3 Renderer::perPixel(Ray& ray)
 			for (const ParallelogramLight& pl : m_activeScene->parallelogramLightSources)
 			{
 				glm::vec3 accumulatedColor = glm::vec3{ 0.0f };
+				float length;
 				for (const PointLight& samplePointLight: pl.samples)
 				{
-					float length = glm::length(samplePointLight.position - shadowRay.origin);
+					length = glm::length(samplePointLight.position - shadowRay.origin);
 					shadowRay.direction = (samplePointLight.position - shadowRay.origin) / length;
 					shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
@@ -212,7 +213,7 @@ glm::vec3 Renderer::perPixel(Ray& ray)
 			}
 			
 			if (fullHitInfo.material.ks != glm::vec3{0.0f})
-				reflectiveContribution *=  reflectiveContribution;
+				reflectiveContribution *= fullHitInfo.material.ks;
 			else
 				break;
 		}  
@@ -247,23 +248,23 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 	const std::vector<bvhNode>& flatBvh = m_activeScene->flatBvh;
 	while (stack.size() > 0)
 	{
-		const int curIndex = stack.top();
+		const int& curIndex = stack.top();
 		const bvhNode& curNode = flatBvh[curIndex];
 		stack.pop();
 		
 		if (curNode.isLeaf)
 		{
-			for(int i = curNode.leftOffset; i <= curNode.rightOffset; i++)
+			for(int i = curNode.leftOffset; i <= curNode.rightOffset; ++i)
 				intersectTriangle(ray, hitInfo, *m_activeScene, i);
 		}
 		else {
 			const bvhNode& leftChild = flatBvh[curNode.leftOffset];
 			const bvhNode& rightChild = flatBvh[curNode.rightOffset];
 			float dist = intersectAABB(ray, leftChild.boundingBox);
-			if (dist > 0 && dist < ray.t)
+			if (dist > EPSILON && dist < ray.t)
 				stack.push(curNode.leftOffset);
 			dist = intersectAABB(ray, rightChild.boundingBox);
-			if (dist > 0 && dist < ray.t)
+			if (dist > EPSILON && dist < ray.t)
 				stack.push(curNode.rightOffset);
 		}
 	}
@@ -278,30 +279,28 @@ bool Renderer::isInShadow(const Ray& ray, float length, uint32_t originalTriangl
 	const std::vector<bvhNode>& flatBvh = m_activeScene->flatBvh;
 	while (stack.size() > 0)
 	{
-		const int curIndex = stack.top();
-		const bvhNode curNode = flatBvh[curIndex];
+		const int& curIndex = stack.top();
+		const bvhNode& curNode = flatBvh[curIndex];
 		stack.pop();
 
 		if (curNode.isLeaf)
 		{
-			for (int i = curNode.leftOffset; i <= curNode.rightOffset; i++)
-				if(i == originalTriangleIndex && intersectTriangle(ray, *m_activeScene, i, length))
+			for (int i = curNode.leftOffset; i <= curNode.rightOffset; ++i)
+				if(i != originalTriangleIndex && intersectTriangle(ray, *m_activeScene, i, length))
 					return true;
 		}
 		else {
-			const bvhNode leftChild = flatBvh[curNode.leftOffset];
-			const bvhNode rightChild = flatBvh[curNode.rightOffset];
+			const bvhNode& leftChild = flatBvh[curNode.leftOffset];
+			const bvhNode& rightChild = flatBvh[curNode.rightOffset];
 			float dist = intersectAABB(ray, leftChild.boundingBox);
-			if (dist > 0)
+			if (dist > EPSILON && dist < length)
 				stack.push(curNode.leftOffset);
 			dist = intersectAABB(ray, rightChild.boundingBox);
-			if (dist > 0)
+			if (dist > EPSILON && dist < length)
 				stack.push(curNode.rightOffset);
 			
 		}
 	}
-
-
 
 	return false;
 }
@@ -393,7 +392,7 @@ std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(ui
 			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
 			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
 			ray.origin = fullHitInfo.position + EPSILON * ray.direction;
-			ray.invDirection = glm::vec3{ 1.0f } / ray.direction;
+			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
 
 			for (const PointLight& pointLight : m_activeScene->pointLightSources)
 			{

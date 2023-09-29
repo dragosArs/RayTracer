@@ -1,11 +1,10 @@
 #include "Camera.h"
 #include "Ray.h"
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 #include "Walnut/Input/Input.h"
+#include "Calculation_utility.h"
 
 using namespace Walnut;
 
@@ -150,18 +149,30 @@ void Camera::RecalculateRayDirections()
 	}
 }
 
+//void Camera::sampleFocusJitter(int samples)
+//{
+//	m_FocusPositions.clear();
+//	//TODO CHANGE THIS
+//	constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
+//	glm::vec3 jitter = glm::cross(m_ForwardDirection, upDirection);
+//	glm::quat rotation = glm::angleAxis(glm::radians(360.0f / samples), m_ForwardDirection);
+//
+//	for (int i = 0; i < samples; i++)
+//	{
+//		jitter = rotation * jitter;
+//		m_FocusPositions.push_back(m_Position + aperture * jitter);
+//	}
+//}
+
 void Camera::sampleFocusJitter(int samples)
 {
 	m_FocusPositions.clear();
-	//TODO CHANGE THIS
-	constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
-	glm::vec3 jitter = glm::cross(m_ForwardDirection, upDirection);
-	glm::quat rotation = glm::angleAxis(glm::radians(360.0f / samples), m_ForwardDirection);
-
+	std::vector<glm::vec3> jitterSamples = createJitter(12345);
+	glm::quat rot = glm::rotation(glm::vec3{0, 1, 0}, m_ForwardDirection);
 	for (int i = 0; i < samples; i++)
 	{
-		jitter = rotation * jitter;
-		m_FocusPositions.push_back(m_Position + aperture * jitter);
+		glm::vec3 translatedVec = rot * jitterSamples[i];
+		m_FocusPositions.emplace_back(glm::vec3{m_Position + aperture * translatedVec});
 	}
 }
 

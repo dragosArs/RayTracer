@@ -1,6 +1,7 @@
 #include "Calculation_utility.h"
-#include <iostream>
-#include <immintrin.h>                                                                          
+#include <iostream>                                                                        
+#include <random>
+#include <glm/gtx/quaternion.hpp>
 
 std::mutex coutMutex;
 float intersectAABB(const Ray& ray, const AABB& box)
@@ -70,6 +71,33 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
         hitInfo.barU = u;
         hitInfo.barV = v;
     }
+}
+
+
+//returns coplanar vectors that represent random points on a unit circle(when applied magnitude can be scaled)
+//they can be used to create different effects: glossy reflections, depth of field, etc.
+std::vector<glm::vec3> createJitter(const int seed)
+{
+    std::vector<glm::vec3> jitterSamples;
+    //TODO CHANGE THIS
+    constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
+    glm::vec3 rt{ 0.0f, 0.0f, -1.0f };
+    std::mt19937 rng(12345);
+
+    // Create a distribution for random values between 0 and 1
+    std::uniform_real_distribution<double> distribution(0.0, 1.0);
+    glm::quat rotation = glm::angleAxis(glm::radians(360.0f / 52.5f), upDirection);
+
+    for (int i = 0; i < 100; i++)
+    {
+        float x = distribution(rng);
+        
+        rt = rotation * rt;
+        jitterSamples.push_back(x * rt);
+    } 
+
+    return jitterSamples;
+
 }
 
 //This is specifically used for shadows, where we only need to know if there is an intersection, and not the exact point of intersection.

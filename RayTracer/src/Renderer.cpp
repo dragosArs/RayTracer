@@ -14,6 +14,7 @@
 #include <queue>
 #include <glm/gtc/type_ptr.hpp>
 #include <stack>
+#include <glm/gtx/quaternion.hpp>
 
 std::mutex cMutex;
 namespace Utils
@@ -155,73 +156,185 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 
 void Renderer::Debug(const Scene& scene, const Camera& camera)
 {
+
 	m_activeScene = &scene;
 	m_activeCamera = &camera;
-	m_visualDebugging.debugRays = debugPixel(camera.xDebug, camera.yDebug);
+	//m_visualDebugging.debugRays = debugPixel(camera.xDebug, camera.yDebug);
 	std::cout << camera.xDebug << " " << camera.yDebug << "\n";
 }
 
+//
+//glm::vec3 Renderer::perPixel(Ray& ray)
+//{
+//	
+//	glm::vec3 color = glm::vec3{ 0.0f };//ambient light
+//	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
+//	BasicHitInfo basicHitInfo;
+//	Ray shadowRay;
+//	for (int i = 0; i <= m_settings.bounces; i++)
+//	{
+//		//"reset" ray
+//		ray.t = 1000.f;
+//		traceRay(ray, basicHitInfo);
+//		FullHitInfo fullHitInfo;
+//		if (ray.t > EPSILON && ray.t < 1000.f)
+//		{
+//			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
+//			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
+//			ray.origin =  fullHitInfo.position + EPSILON * fullHitInfo.normal;
+//			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
+//
+//			shadowRay.origin = fullHitInfo.position + EPSILON * fullHitInfo.normal;
+//			for (const PointLight& pointLight : m_activeScene->pointLightSources)
+//			{
+//				
+//				const float length = glm::length(pointLight.position - shadowRay.origin);
+//				shadowRay.direction = (pointLight.position - shadowRay.origin) / length;
+//				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
+//
+//				if (!m_settings.enableShadows || !isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
+//					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
+//			}
+//
+//			for (const ParallelogramLight& pl : m_activeScene->parallelogramLightSources)
+//			{
+//				glm::vec3 accumulatedColor = glm::vec3{ 0.0f };
+//				float length;
+//				for (const PointLight& samplePointLight: pl.samples)
+//				{
+//					length = glm::length(samplePointLight.position - shadowRay.origin);
+//					shadowRay.direction = (samplePointLight.position - shadowRay.origin) / length;
+//					shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
+//
+//					if (!m_settings.enableShadows || !isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
+//						accumulatedColor += phongFull(fullHitInfo, *m_activeCamera, samplePointLight);
+//				}
+//				
+//				color += reflectiveContribution * accumulatedColor / (float)pl.samples.size();
+//			}
+//			
+//			if (fullHitInfo.material.ks != glm::vec3{0.0f})
+//				reflectiveContribution *= fullHitInfo.material.ks;
+//			else
+//				break;
+//		}  
+//		else
+//			i = m_settings.bounces;
+//	}
+//	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
+//	return finalColor;
+//}
 
 glm::vec3 Renderer::perPixel(Ray& ray)
 {
 
-	
-	glm::vec3 color = glm::vec3{ 0.0f };//ambient light
-	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
-	BasicHitInfo basicHitInfo;
-	Ray shadowRay;
-	for (int i = 0; i <= m_settings.bounces; i++)
-	{
-		//"reset" ray
-		ray.t = 1000.f;
-		traceRay(ray, basicHitInfo);
-		FullHitInfo fullHitInfo;
-		if (ray.t > EPSILON && ray.t < 1000.f)
-		{
-			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
-			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
-			ray.origin =  fullHitInfo.position + EPSILON * fullHitInfo.normal;
-			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
+	std::vector<FullHitInfo> fullHitInfos = geometryIntersection(ray);
+	glm::vec3 color = shade(fullHitInfos);
+	return glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
+}
 
+glm::vec3 Renderer::shade(const std::vector<FullHitInfo>& hitInfos)
+{
+	glm::vec3 reflectiveContribution = glm::vec3{ 1.0f };
+	glm::vec3 color = glm::vec3{ 0.0f };
+	for (const FullHitInfo& hitInfo : hitInfos)
+	{
+		for (const PointLight& pointLight : m_activeScene->pointLightSources)
+		{
+			color += reflectiveContribution * phongFull(hitInfo, *m_activeCamera, pointLight);
+		}
+
+		for (const ParallelogramLight& pl : m_activeScene->parallelogramLightSources)
+		{
+			glm::vec3 accumulatedColor = glm::vec3{ 0.0f };
+			for (const PointLight& samplePointLight : pl.samples)
+			{
+				accumulatedColor += phongFull(hitInfo, *m_activeCamera, samplePointLight);
+			}
+
+			color += reflectiveContribution * accumulatedColor / (float)pl.samples.size();
+		}
+	}
+	return color;
+}
+
+//TODO update reflective contribution for each hitInfo
+//Set a limit for the number of bounces, possibly by using a fulltHitInfo recursive level to keep track of the number of bounces
+std::vector<FullHitInfo> Renderer::geometryIntersection(const Ray& ray)
+{
+	std::vector<FullHitInfo> fullHitInfos;
+	std::queue<Ray> raysPipeline;
+	raysPipeline.emplace(ray);
+	while(raysPipeline.size() > 0)
+	{
+		Ray& activeRay = raysPipeline.front();
+		raysPipeline.pop();
+		const BasicHitInfo& basicHitInfo = traceRay(activeRay);
+		if (activeRay.t > EPSILON && activeRay.t < 1000.f)
+		{
+			const FullHitInfo fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, activeRay);
+			Ray shadowRay;
 			shadowRay.origin = fullHitInfo.position + EPSILON * fullHitInfo.normal;
+			float length;
 			for (const PointLight& pointLight : m_activeScene->pointLightSources)
 			{
-				
-				const float length = glm::length(pointLight.position - shadowRay.origin);
+				length = glm::length(pointLight.position - shadowRay.origin);
 				shadowRay.direction = (pointLight.position - shadowRay.origin) / length;
 				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
-
 				if (!m_settings.enableShadows || !isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
-					color += reflectiveContribution * phongFull(fullHitInfo, *m_activeCamera, pointLight);
+					fullHitInfos.push_back(fullHitInfo);
+					
 			}
 
 			for (const ParallelogramLight& pl : m_activeScene->parallelogramLightSources)
 			{
-				glm::vec3 accumulatedColor = glm::vec3{ 0.0f };
 				float length;
-				for (const PointLight& samplePointLight: pl.samples)
+				for (const PointLight& samplePointLight : pl.samples)
 				{
 					length = glm::length(samplePointLight.position - shadowRay.origin);
 					shadowRay.direction = (samplePointLight.position - shadowRay.origin) / length;
 					shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
 
 					if (!m_settings.enableShadows || !isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
-						accumulatedColor += phongFull(fullHitInfo, *m_activeCamera, samplePointLight);
+						fullHitInfos.push_back(fullHitInfo);
 				}
-				
-				color += reflectiveContribution * accumulatedColor / (float)pl.samples.size();
+
 			}
-			
-			if (fullHitInfo.material.ks != glm::vec3{0.0f})
-				reflectiveContribution *= fullHitInfo.material.ks;
-			else
-				break;
-		}  
-		else
-			i = m_settings.bounces;
+			//Handle reflections
+			if (fullHitInfo.material.ks != glm::vec3{ 0.0f } && activeRay.recursionLevel < m_settings.bounces) {
+				glm::vec3 reflectionDir = glm::reflect(activeRay.direction, fullHitInfo.normal);
+				Ray reflectedRay{ fullHitInfo.position + EPSILON * fullHitInfo.normal ,//origin
+						reflectionDir,//direction
+						glm::normalize(glm::vec3{ 1.0f } / reflectionDir),//invdir
+						activeRay.contribution * fullHitInfo.material.ks, //contribution
+						activeRay.recursionLevel + 1,
+						
+			  };
+				if (m_settings.enableGlossyReflections) {
+					generateJitteredReflectiveRays(reflectedRay, raysPipeline, m_settings.glossySamples, m_settings.glossyLevel);
+				}	
+				else {
+					raysPipeline.emplace(reflectedRay);
+				}
+			}
+		}
 	}
-	glm::vec3 finalColor = glm::clamp(color, glm::vec3{ 0.0f }, glm::vec3{ 1.0f });
-	return finalColor;
+
+	return fullHitInfos;
+}
+
+void Renderer::generateJitteredReflectiveRays(const Ray& ray, std::queue<Ray>& raysPipeline, int glossySamples, float glossyLevel)
+{
+	glm::quat rot = glm::rotation(glm::vec3{ 0, 1, 0 }, ray.direction);
+	glm::vec3 contribution = ray.contribution / (float)glossySamples;
+	float aux = 1.0f * glossyLevel / 80.0f;
+	for (int i = 0; i < glossySamples; ++i)
+	{
+		glm::vec3 translatedVec = rot * jitterPoints[i];
+		glm::vec3 direction = glm::normalize(ray.direction + aux  * translatedVec);
+		glm::vec3 invDir = glm::normalize(glm::vec3{ 1.0f } / direction);
+		raysPipeline.emplace(Ray{ ray.origin, direction, invDir, contribution , ray.recursionLevel + 1 });	
+	}
 }
 
 glm::vec3 Renderer::accumulateForFocusEffect(Ray& ray)
@@ -241,8 +354,10 @@ glm::vec3 Renderer::accumulateForFocusEffect(Ray& ray)
 	return color / (float)m_settings.focusSamples;
 }
 
-void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
+
+BasicHitInfo Renderer::traceRay(Ray& ray)
 {
+	BasicHitInfo hitInfo;
 	std::stack<int> stack;
 	stack.push(0);
 	const std::vector<bvhNode>& flatBvh = m_activeScene->flatBvh;
@@ -268,7 +383,7 @@ void Renderer::traceRay(Ray& ray, BasicHitInfo& hitInfo)
 				stack.push(curNode.rightOffset);
 		}
 	}
-	
+	return hitInfo;
 }
 
 
@@ -330,7 +445,7 @@ FullHitInfo Renderer::retrieveFullHitInfo(const Scene* scene, const BasicHitInfo
 	}
 	
 		
-	return FullHitInfo{ hitPos, normal, mat };
+	return FullHitInfo{ mat, hitPos, normal, ray.contribution};
 }
 
 glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, const Texture& texture)
@@ -366,57 +481,57 @@ glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, cons
 	return color;
 }
 
-std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(uint32_t x, uint32_t y)
-{
-	std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugLines;
-
-	Ray ray;
-	Ray shadowRay;
-	ray.origin = m_activeCamera->GetPosition();
-	ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
-	BasicHitInfo basicHitInfo;
-	glm::vec3 color;
-	int bounces = 3;
-	for (int i = 0; i < bounces; i++)
-	{
-		//"reset" ray
-		ray.t = -1.0f;
-		traceRay(ray, basicHitInfo);
-		color = glm::vec3{ 0.0f };
-		FullHitInfo fullHitInfo;
-		glm::vec3 rayOrigDebug = ray.origin;
-		glm::vec3 rayDirDebug = glm::normalize(ray.direction);
-		glm::vec3 color = glm::vec3{ 1.0f, 0.0f, 0.0f };
-		if (ray.t > EPSILON)
-		{
-			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
-			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
-			ray.origin = fullHitInfo.position + EPSILON * ray.direction;
-			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
-
-			for (const PointLight& pointLight : m_activeScene->pointLightSources)
-			{
-				shadowRay.origin = fullHitInfo.position + 0.075f * fullHitInfo.normal + 100 * EPSILON * shadowRay.direction;
-				float length = glm::length(pointLight.position - shadowRay.origin);
-				shadowRay.direction = glm::normalize(pointLight.position - shadowRay.origin);
-				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
-
-				if (!isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
-				{
-					color = phongFull(fullHitInfo, *m_activeCamera, pointLight);
-					debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{fullHitInfo.position, pointLight.position, glm::vec3{ 1.0f, 1.0f, 1.0f }});
-				}
-				else
-					debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{fullHitInfo.position, pointLight.position, glm::vec3{ 0.0f, 1.0f, 1.0f }});
-			}
-		}
-		else
-			i = bounces;
-		debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{rayOrigDebug, rayOrigDebug + ray.t * rayDirDebug, color});
-	}
-
-	return debugLines;
-}
+//std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> Renderer::debugPixel(uint32_t x, uint32_t y)
+//{
+//	std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugLines;
+//
+//	Ray ray;
+//	Ray shadowRay;
+//	ray.origin = m_activeCamera->GetPosition();
+//	ray.direction = m_activeCamera->GetRayDirections()[x + y * m_finalImage->GetWidth()];
+//	BasicHitInfo basicHitInfo;
+//	glm::vec3 color;
+//	int bounces = 3;
+//	for (int i = 0; i < bounces; i++)
+//	{
+//		//"reset" ray
+//		ray.t = -1.0f;
+//		traceRay(ray, basicHitInfo);
+//		color = glm::vec3{ 0.0f };
+//		FullHitInfo fullHitInfo;
+//		glm::vec3 rayOrigDebug = ray.origin;
+//		glm::vec3 rayDirDebug = glm::normalize(ray.direction);
+//		glm::vec3 color = glm::vec3{ 1.0f, 0.0f, 0.0f };
+//		if (ray.t > EPSILON)
+//		{
+//			fullHitInfo = retrieveFullHitInfo(m_activeScene, basicHitInfo, ray);
+//			ray.direction = glm::reflect(ray.direction, fullHitInfo.normal);
+//			ray.origin = fullHitInfo.position + EPSILON * ray.direction;
+//			ray.invDirection = glm::normalize(glm::vec3{ 1.0f } / ray.direction);
+//
+//			for (const PointLight& pointLight : m_activeScene->pointLightSources)
+//			{
+//				shadowRay.origin = fullHitInfo.position + 0.075f * fullHitInfo.normal + 100 * EPSILON * shadowRay.direction;
+//				float length = glm::length(pointLight.position - shadowRay.origin);
+//				shadowRay.direction = glm::normalize(pointLight.position - shadowRay.origin);
+//				shadowRay.invDirection = glm::normalize(glm::vec3{ 1.0f } / shadowRay.direction);
+//
+//				if (!isInShadow(shadowRay, length, basicHitInfo.triangleIndex))
+//				{
+//					color = phongFull(fullHitInfo, *m_activeCamera, pointLight);
+//					debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{fullHitInfo.position, pointLight.position, glm::vec3{ 1.0f, 1.0f, 1.0f }});
+//				}
+//				else
+//					debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{fullHitInfo.position, pointLight.position, glm::vec3{ 0.0f, 1.0f, 1.0f }});
+//			}
+//		}
+//		else
+//			i = bounces;
+//		debugLines.push_back(std::tuple<glm::vec3, glm::vec3, glm::vec3>{rayOrigDebug, rayOrigDebug + ray.t * rayDirDebug, color});
+//	}
+//
+//	return debugLines;
+//}
 
 
 void Renderer::RasterizeLine(const glm::vec3& start, const glm::vec3& end, const glm::vec3& color, std::unordered_map<Coord, float>& zBuffer)

@@ -249,7 +249,7 @@ int Scene::splitWithSAH(const AABB& box, const glm::vec3& boxSize, glm::vec3& sp
 	float S = boxSize[otherAxis1] + boxSize[otherAxis2];
 	for (int i = 0; i < 16; ++i)
 	{
-		while (iterate < right && traverse >= triangles[iterate].centroid[axis])
+		while (iterate < right - 1 && traverse >= triangles[iterate].centroid[axis])
 			iterate++;
 		sah = (P + S * (traverse - box.lower[axis])) * (iterate - left) 
 			+ (P + S * (box.upper[axis] - traverse)) * (right - iterate);

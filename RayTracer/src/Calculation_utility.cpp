@@ -76,25 +76,60 @@ void intersectTriangle(Ray& ray, BasicHitInfo& hitInfo, const Scene& scene, cons
 
 //returns coplanar vectors that represent random points on a unit circle(when applied magnitude can be scaled)
 //they can be used to create different effects: glossy reflections, depth of field, etc.
+//std::vector<glm::vec3> createJitter(const int seed)
+//{
+//    std::vector<glm::vec3> jitterSamples;
+//    //TODO CHANGE THIS
+//    constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
+//    glm::vec3 rt{ 0.0f, 0.0f, -1.0f };
+//    std::mt19937 rng(12345);
+//
+//    // Create a distribution for random values between 0 and 1
+//    std::uniform_real_distribution<double> distribution(0.0, 1.0);
+//    glm::quat rotation = glm::angleAxis(glm::radians(360.0f / 52.5f), upDirection);
+//
+//    for (int i = 0; i < 100; i++)
+//    {
+//        float x = distribution(rng);
+//        
+//        rt = rotation * rt;
+//        jitterSamples.push_back(x * rt);
+//    } 
+//
+//    return jitterSamples;
+//
+//}
+
 std::vector<glm::vec3> createJitter(const int seed)
 {
     std::vector<glm::vec3> jitterSamples;
     //TODO CHANGE THIS
-    constexpr glm::vec3 upDirection(0.0f, 1.0f, 0.0f);
-    glm::vec3 rt{ 0.0f, 0.0f, -1.0f };
-    std::mt19937 rng(12345);
+    // Seed for the random number generator
+    //unsigned int seed = 42; // Change this to your desired seed value
 
-    // Create a distribution for random values between 0 and 1
-    std::uniform_real_distribution<double> distribution(0.0, 1.0);
-    glm::quat rotation = glm::angleAxis(glm::radians(360.0f / 52.5f), upDirection);
+    // Create random number generators with the given seed
+    std::default_random_engine generator(seed);
 
-    for (int i = 0; i < 100; i++)
-    {
-        float x = distribution(rng);
-        
-        rt = rotation * rt;
-        jitterSamples.push_back(x * rt);
-    } 
+    // Define the distributions for magnitude (radius) and angle
+    std::normal_distribution<double> magnitude_dist(1.0, 0.2); // Mean: 1.0, Standard Deviation: 0.2
+    std::uniform_real_distribution<double> angle_dist(0.0, 2.0 * glm::pi<float>()); // Uniform angle distribution (0 to 2 * pi)
+    
+
+    // Number of points to generate
+    int num_points = 100; // Adjust as needed
+
+    // Generate and print random points on the unit circle
+    for (int i = 0; i < num_points; ++i) {
+        // Generate random magnitude (radius) and angle
+        float magnitude = 1.0 / (1.0 + glm::exp(magnitude_dist(generator)));
+        float angle = angle_dist(generator);
+
+        // Calculate the Cartesian coordinates (x, y) from polar coordinates
+        float x = magnitude * cos(angle);
+        double y = magnitude * sin(angle);
+
+        jitterSamples.push_back(glm::vec3(x, 0.0f, y));
+    }
 
     return jitterSamples;
 

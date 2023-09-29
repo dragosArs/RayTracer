@@ -9,6 +9,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 #include "rapidobj.hpp"
+#include "Calculation_utility.h"
 
 
 using namespace Walnut;
@@ -20,7 +21,7 @@ public:
 		: m_Camera(45.0f, 0.1f, 100.0f)
 	{
 		
-#define SCENE 1
+#define SCENE 0
 #if SCENE
 		m_Scene.load("\\assets\\objects\\teapot.obj", "\\assets\\materials\\default.mtl");
 		
@@ -95,10 +96,16 @@ public:
 		ImGui::Checkbox("Apply texture(defaults to bilinear interpolation)", &m_Renderer.GetSettings().applyTexture);
 		ImGui::SliderInt("Number of bounces(default is 1)", &m_Renderer.GetSettings().bounces, 0, 10);
 		ImGui::SliderInt("Number of light samples(default is 3)", &m_Renderer.GetSettings().lightSamples, 1, 10);
+		ImGui::Separator();
 		ImGui::Checkbox("Enable depth of focus", &m_Renderer.GetSettings().enableDepthOfFocus);
 		ImGui::SliderFloat("Aperture", &m_Camera.aperture, 0.0f, 1.0f);
 		ImGui::SliderFloat("Focal length", &m_Camera.focalLength, m_Camera.GetNearClip(), m_Camera.GetFarClip());
 		ImGui::SliderInt("Focus samples", &m_Renderer.GetSettings().focusSamples, 3, 10);
+		ImGui::Separator();
+		ImGui::Checkbox("Enable glossy reflections", &m_Renderer.GetSettings().enableGlossyReflections);
+		ImGui::TreeNode("Glossy reflections settings");
+		ImGui::SliderInt("Glossy samples", &m_Renderer.GetSettings().glossySamples, 1, 100);
+		ImGui::SliderFloat("Glossy level", &m_Renderer.GetSettings().glossyLevel, 1.0f, 10.0f);
 		
 
 		ImGui::End();
@@ -126,7 +133,8 @@ public:
 		m_Scene.sampleAreaLights(m_Renderer.GetSettings().lightSamples);
 		m_Renderer.OnResize(m_ViewportWidth, m_ViewportHeight);
 		m_Camera.OnResize(m_ViewportWidth, m_ViewportHeight);
-		m_Camera.sampleFocusJitter(m_Renderer.GetSettings().focusSamples);
+		m_Renderer.jitterPoints = createJitter(12345);
+		m_Camera.sampleFocusJitter(m_Renderer.jitterPoints, m_Renderer.GetSettings().focusSamples);
 		m_Renderer.Render(m_Scene, m_Camera);
 		m_LastRenderTime = timer.ElapsedMillis();
 	}

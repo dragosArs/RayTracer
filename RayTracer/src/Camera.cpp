@@ -164,12 +164,11 @@ void Camera::RecalculateRayDirections()
 //	}
 //}
 
-void Camera::sampleFocusJitter(int samples)
+void Camera::sampleFocusJitter(const std::vector<glm::vec3>& jitterSamples, int detail)
 {
 	m_FocusPositions.clear();
-	std::vector<glm::vec3> jitterSamples = createJitter(12345);
 	glm::quat rot = glm::rotation(glm::vec3{0, 1, 0}, m_ForwardDirection);
-	for (int i = 0; i < samples; i++)
+	for (int i = 0; i < detail; i++)
 	{
 		glm::vec3 translatedVec = rot * jitterSamples[i];
 		m_FocusPositions.emplace_back(glm::vec3{m_Position + aperture * translatedVec});

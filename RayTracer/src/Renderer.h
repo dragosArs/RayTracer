@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <glm/glm.hpp>
+#include <queue>
 
 
 struct Coord {
@@ -42,8 +43,11 @@ public:
 		bool enableShadows = false;
 		bool applyTexture = true;
 		bool enableDepthOfFocus = false;
+		bool enableGlossyReflections = false;
 		int focusSamples = 4;
 		int lightSamples = 3;
+		int glossySamples = 4;
+		float glossyLevel = 2.0f;
 		int bounces = 0;
 	};
 
@@ -54,6 +58,8 @@ public:
 		bool enableRaysDebugging = false;
 		std::vector<std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugRays;
 	};
+
+	std::vector<glm::vec3> jitterPoints;
 public:
 	Renderer() = default;
 
@@ -69,9 +75,12 @@ private:
 
 	glm::vec3 perPixel(Ray& ray); // RayGen
 	glm::vec3 accumulateForFocusEffect(Ray& ray);
-	std::vector <std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugPixel(uint32_t x, uint32_t y);
-	void traceRay(Ray& ray, BasicHitInfo& hitInfo);
+	/*std::vector <std::tuple<glm::vec3, glm::vec3, glm::vec3>> debugPixel(uint32_t x, uint32_t y);*/
+	BasicHitInfo traceRay(Ray& ray);
 	bool isInShadow(const Ray& ray, float length,  uint32_t originalTriangleIndex);
+	std::vector<FullHitInfo> geometryIntersection(const Ray& ray);
+	glm::vec3 shade(const std::vector<FullHitInfo>& fullHitInfos);
+	void generateJitteredReflectiveRays(const Ray& ray, std::queue<Ray>& raysPipeline, int glossySamples, float glossyLevel);
 	FullHitInfo retrieveFullHitInfo(const Scene* scene, const BasicHitInfo& basicHitInfo, const Ray& ray);
 	glm::vec3 Renderer::applyBilinearInterpolation(const glm::vec2& pixelCoord, const Texture& texture);
 

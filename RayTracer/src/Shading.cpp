@@ -6,7 +6,7 @@
 glm::vec3 phongFull(const FullHitInfo& hitInfo, const Camera& camera, const PointLight& pointLight)
 {
 
-    return diffuseOnly(hitInfo, pointLight) + phongSpecularOnly(hitInfo, camera, pointLight);
+    return hitInfo.contribution * (diffuseOnly(hitInfo, pointLight) + phongSpecularOnly(hitInfo, camera, pointLight));
 }
 
 glm::vec3 diffuseOnly(const FullHitInfo& hitInfo, const PointLight& pointLight)

@@ -24,7 +24,7 @@ public:
 	void SetDirection(const glm::vec3& direction) { m_ForwardDirection = direction; RecalculateView(); RecalculateRayDirections(); }
 	const std::vector<glm::vec3>& GetRayDirections() const { return m_RayDirections; }
 	const std::pair<glm::vec3, glm::vec3> ProjectLineOnScreen(std::pair<glm::vec3, glm::vec3> line) const;
-	void sampleFocusJitter(int samples);
+	void sampleFocusJitter(const std::vector<glm::vec3>& jitterSamples, int detail);
 
 	 
 	uint32_t xDebug = 0;

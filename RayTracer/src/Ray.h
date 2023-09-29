@@ -8,7 +8,9 @@ struct Ray
 	glm::vec3 origin = glm::vec3{ 0.0f };
 	glm::vec3 direction = glm::vec3{ 0.0f, 0.0f, -1.0f };
 	glm::vec3 invDirection = glm::vec3{ 0.0f, 0.0f, 1.0f };
-	float t{ -1.0f };
+	glm::vec3 contribution = glm::vec3{ 1.0f };
+	int recursionLevel = 0;
+	float t{ 1000.0f };
 };
 
 struct BasicHitInfo
@@ -20,8 +22,8 @@ struct BasicHitInfo
 
 struct FullHitInfo
 {
+	Material material;
 	glm::vec3 position;
 	glm::vec3 normal;
-	//glm::vec2 texCoord;
-	Material material;
+	glm::vec3 contribution = glm::vec3{ 1.0f };
 };
